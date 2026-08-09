@@ -35,6 +35,9 @@ frontend/vite.config.d.ts
 backend/data/cache/*
 !backend/data/cache/.gitkeep
 
+# Teammate/raw import workspace (canonical snapshots live in backend/data)
+backend/data-tmp/
+
 # OS
 .DS_Store
 Thumbs.db

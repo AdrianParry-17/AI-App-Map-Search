@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_DATASET_PATH = BACKEND_DIR / "data" / "da_nang_osm_snapshot.json"
-TEACHING_DATASET_PATH = BACKEND_DIR / "data" / "da_nang_central.json"
+DEFAULT_DATASET_PATH = BACKEND_DIR / "data" / "hcmc_delivery_osm_snapshot.json"
+TEACHING_DATASET_PATH = BACKEND_DIR / "data" / "delivery_teaching_fixture.json"
 DEFAULT_CORS_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -20,8 +20,8 @@ DEFAULT_CORS_ORIGINS = (
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    app_name: str = "Da Nang Emergency Route Lab API"
-    app_version: str = "1.0.0"
+    app_name: str = "HCMC Delivery Route Lab API"
+    app_version: str = "2.0.0"
     api_prefix: str = "/api/v1"
     dataset_path: Path = DEFAULT_DATASET_PATH
     cors_origins: tuple[str, ...] = DEFAULT_CORS_ORIGINS

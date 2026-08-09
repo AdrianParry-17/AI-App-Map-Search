@@ -27,7 +27,7 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
     "normal": ScenarioDefinition(
         "normal",
         "Normal traffic",
-        "Light deterministic variation around free-flow conditions.",
+        "Snapshot baseline congestion with light deterministic variation.",
         1.00,
         0.08,
     ),
@@ -54,8 +54,8 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
     ),
     "incident": ScenarioDefinition(
         "incident",
-        "Bridge incident",
-        "A deterministic teaching scenario that closes explicitly flagged segments.",
+        "Road disruption",
+        "A deterministic teaching scenario that closes explicitly flagged road segments.",
         1.12,
         0.18,
     ),
@@ -112,6 +112,15 @@ class TrafficModel:
         )
         road_factor = 1.0
         reason_parts = [definition.label]
+
+        try:
+            base_congestion = float(attributes.get("base_congestion", 1.0))
+        except (TypeError, ValueError):
+            base_congestion = 1.0
+        base_congestion = min(5.0, max(1.0, base_congestion))
+        road_factor *= 1.0 + (base_congestion - 1.0) * 0.10
+        if base_congestion > 1.0:
+            reason_parts.append(f"snapshot baseline {base_congestion:.2f}/5")
 
         if scenario == "morning_rush" and edge.road_class in {"primary", "arterial"}:
             road_factor *= 1.12
@@ -178,4 +187,3 @@ class TrafficModel:
 
         self._cache[cache_key] = status
         return status
-

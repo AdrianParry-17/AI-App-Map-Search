@@ -1,4 +1,3 @@
-"""Emergency routing laboratory backend."""
+"""Ho Chi Minh City delivery route-search laboratory backend."""
 
-__version__ = "1.0.0"
-
+__version__ = "2.0.0"

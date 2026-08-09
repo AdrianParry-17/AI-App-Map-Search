@@ -10,11 +10,11 @@ from app.traffic import TrafficModel
 @pytest.fixture
 def small_graph() -> RoadGraph:
     nodes = [
-        GraphNode("s", "Start", "station", 16.0000, 108.0000),
-        GraphNode("a", "A", "intersection", 16.0004, 108.0004),
-        GraphNode("b", "B", "intersection", 16.0000, 108.0003),
-        GraphNode("c", "C", "intersection", 16.0000, 108.0006),
-        GraphNode("g", "Goal", "hospital", 16.0000, 108.0009),
+        GraphNode("s", "Courier hub", "delivery_depot", 10.7700, 106.6800),
+        GraphNode("a", "Junction A", "intersection", 10.7704, 106.6804),
+        GraphNode("b", "Junction B", "intersection", 10.7700, 106.6803),
+        GraphNode("c", "Junction C", "intersection", 10.7700, 106.6806),
+        GraphNode("g", "Delivery stop", "delivery_market", 10.7700, 106.6809),
     ]
     edges = [
         # BFS sees A first and takes two hops (cost .2); weighted search takes B/C (cost .12).
@@ -40,4 +40,3 @@ def distance_calculator(small_graph: RoadGraph) -> CostCalculator:
         "normal",
         CostWeights(distance=1, travel_time=0, traffic_delay=0, risk=0),
     )
-

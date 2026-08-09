@@ -1,55 +1,76 @@
-# Da Nang Emergency Route Lab — backend
+# HCMC Delivery Route Lab — backend
 
-FastAPI backend for comparing classical search algorithms on a directed central
-Da Nang road graph. The search core is standard-library Python and does **not**
-use NetworkX. Traffic is a deterministic teaching overlay, not a live feed.
+FastAPI backend for comparing classical search algorithms on a directed, contracted street graph in central Ho Chi Minh City. The product scenario is courier/delivery route planning: pair search, algorithm comparison, and multi-stop ordering. The search core uses standard-library Python and does not use NetworkX.
 
-> Safety: the bundled road topology is an offline OSM-derived snapshot, while
-> traffic/risk overlays are educational simulations. It is not a live or
-> safety-certified dispatch graph. Never use it for actual emergency response.
+The bundled graph is an offline OpenStreetMap-derived snapshot. Traffic, travel time, flood susceptibility, disruption closures, and risk overlays are deterministic educational estimates, not live navigation data.
 
 ## Run locally
 
-Python 3.11–3.13 is recommended for the most predictable package support.
+Python 3.11–3.13 is recommended.
 
-```powershell
+~~~powershell
 cd backend
 py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
+~~~
 
-OpenAPI is at `http://127.0.0.1:8000/docs`. The React development origins
-`localhost:5173`, `127.0.0.1:5173`, `localhost:4173` and `127.0.0.1:4173` are
-enabled by default.
+OpenAPI is available at <http://127.0.0.1:8000/docs>. Run backend tests from this directory with:
 
-Run tests from this directory with `python -m pytest`.
+~~~powershell
+python -m pytest
+~~~
 
-## API (`/api/v1`)
+## Canonical dataset
 
-- `GET /health` — process/dataset readiness.
-- `GET /metadata` — algorithm, heuristic, traffic, optimizer and trace registries.
-- `GET /graph?scenario=normal` — nodes and directed edges with scenario-adjusted
-  traffic status, oriented edge polylines, and a GeoJSON FeatureCollection.
-- `POST /search` — one start/goal run and a deterministic alternative route.
-- `POST /compare` — run 2–8 algorithms under identical conditions.
-- `POST /multi-route` — visit several stops using nearest-neighbor, exact
-  Held–Karp, 2-opt, or seeded simulated annealing + 2-opt.
+The default runtime file is:
 
-### Pair search request
+<code>data/hcmc_delivery_osm_snapshot.json</code>
 
-```json
+It contains:
+
+- 1,103 nodes;
+- 2,279 already-directed arcs;
+- 187 delivery POIs, including 172 in the 992-node primary SCC;
+- 85 strongly connected components in total;
+- an OSM snapshot bounded to <code>[10.750, 106.665, 10.800, 106.715]</code>.
+
+The 2,279 records must not be expanded. Source records labelled two-way already have a separate reverse row; the importer validates that reverse row and writes <code>bidirectional: false</code> for every canonical edge.
+
+The small <code>data/delivery_teaching_fixture.json</code> file is only a deterministic API/test fixture. Override the runtime file with <code>ROUTING_DATASET_PATH</code> when needed.
+
+## API
+
+All public endpoints use the <code>/api/v1</code> prefix.
+
+- <code>GET /health</code> — service and dataset readiness.
+- <code>GET /metadata</code> — dataset, algorithm, heuristic, scenario, optimizer and trace registries.
+- <code>GET /graph?scenario=normal&amp;compact=true</code> — topology/geometry with map-required attributes.
+- <code>GET /graph?scenario=normal&amp;include_geojson=true</code> — also populate the duplicate GeoJSON FeatureCollection for GIS clients. Its feature list is empty by default to keep the browser payload smaller.
+- <code>GET /traffic?scenario=heavy_rain</code> — lightweight per-edge overlay; no repeated nodes or geometry.
+- <code>POST /search</code> — one pickup/drop-off route plus an optional alternative.
+- <code>POST /compare</code> — run 2–8 algorithms under identical inputs.
+- <code>POST /multi-route</code> — order several delivery stops with nearest-neighbor, Held–Karp, 2-opt, or seeded simulated annealing.
+
+### Pair-search example
+
+The canonical metadata recommends two primary-component POIs for a stable first run:
+
+- <code>poi_way_152994798</code> — Co.op Mart;
+- <code>poi_way_39514795</code> — Chợ Bến Thành.
+
+~~~json
 {
-  "start_id": "emergency_115",
-  "goal_id": "family_hospital",
+  "start_id": "poi_way_152994798",
+  "goal_id": "poi_way_39514795",
   "algorithm": "astar",
   "heuristic": "travel_time",
   "scenario": "morning_rush",
   "cost_weights": {
     "distance": 0.25,
-    "travel_time": 0.5,
-    "traffic_delay": 0.2,
+    "travel_time": 0.50,
+    "traffic_delay": 0.20,
     "risk": 0.05
   },
   "include_trace": true,
@@ -57,140 +78,120 @@ Run tests from this directory with `python -m pytest`.
   "max_expansions": 100000,
   "include_alternative": true
 }
-```
+~~~
 
-Algorithm IDs: `bfs`, `dfs`, `ucs`, `dijkstra`, `astar`,
-`greedy_best_first`, `bidirectional_dijkstra`, `ida_star`.
+Algorithm IDs are <code>bfs</code>, <code>dfs</code>, <code>ucs</code>, <code>dijkstra</code>, <code>astar</code>, <code>greedy_best_first</code>, <code>bidirectional_dijkstra</code>, and <code>ida_star</code>.
 
-Heuristic IDs: `zero`, `haversine`, `travel_time`, `traffic_aware`. Metadata
-marks the first three admissible; `traffic_aware` intentionally demonstrates a
-potentially faster but non-admissible estimate.
+Heuristic IDs are <code>zero</code>, <code>haversine</code>, <code>travel_time</code>, and <code>traffic_aware</code>. Metadata marks the first three admissible for their documented cost interpretation; traffic-aware intentionally demonstrates a practical heuristic that may overestimate.
 
-Scenario IDs: `normal`, `morning_rush`, `evening_rush`, `heavy_rain`,
-`incident`.
+Scenario IDs are <code>normal</code>, <code>morning_rush</code>, <code>evening_rush</code>, <code>heavy_rain</code>, and <code>incident</code>. The incident scenario is presented as a generic road disruption and closes only arcs carrying the corresponding synthetic flag.
 
-Every successful pair response has this stable top-level shape:
+Successful pair responses expose:
 
-```text
+~~~text
 request_id, status, found, start_id, goal_id,
 algorithm, heuristic, scenario,
 path, edge_ids, route_geojson,
 metrics, trace, explanation, alternative, cost_breakdown
-```
+~~~
 
-`path` is an ordered node-ID array. `edge_ids` has exactly `len(path) - 1`
-items. `route_geojson` is a GeoJSON `LineString` with `[longitude, latitude]`
-coordinates assembled from each stored OSM edge polyline (not straight node
-chords). `cost_breakdown.total_cost` equals `metrics.path_cost`.
+The ordered <code>edge_ids</code> array has exactly <code>len(path) - 1</code> items. Route geometry uses GeoJSON coordinate order <code>[longitude, latitude]</code>. The public cost invariant is <code>cost_breakdown.total_cost == metrics.path_cost</code>.
 
-Trace events always contain:
+### Multi-stop example
 
-```text
-step, event, node_id, parent_id, edge_id, direction,
-frontier_size, explored_count, g_cost, h_cost, f_cost, depth, message
-```
-
-This lets React animate every algorithm with one renderer. Bidirectional
-Dijkstra uses `direction: "forward" | "backward"`; other algorithms use
-`forward`.
-
-### Compare request
-
-Uses the pair fields plus an `algorithms` array. `include_alternative` is omitted.
-The response contains `runs`, cost/expansion `ranking`, `best_algorithm`, and
-route `agreement` groups.
-
-### Multi-route request
-
-```json
+~~~json
 {
-  "start_id": "emergency_115",
-  "stop_ids": ["dn_hospital", "family_hospital", "son_tra_clinic"],
+  "start_id": "poi_way_152994798",
+  "stop_ids": [
+    "poi_way_39514795",
+    "poi_way_152990635"
+  ],
   "method": "held_karp",
   "return_to_start": true,
   "scenario": "normal",
   "cost_weights": {
     "distance": 0.25,
-    "travel_time": 0.5,
-    "traffic_delay": 0.2,
+    "travel_time": 0.50,
+    "traffic_delay": 0.20,
     "risk": 0.05
   },
   "seed": 42,
   "max_iterations": 1000,
   "max_expansions": 100000
 }
-```
+~~~
 
-`held_karp` is capped at 10 stops; requests overall are capped at 12. All
-pairwise legs use exact Dijkstra. Approximate optimizers are reproducible for a
-given seed and input.
+Held–Karp accepts at most 10 stops. Requests overall accept at most 12. Every pairwise leg uses Dijkstra under the selected scenario and weights.
 
-## OSM snapshot and replacement datasets
+## Canonical JSON contract
 
-The default is `data/da_nang_osm_snapshot.json` (offline, bounded, with ODbL
-metadata and OpenStreetMap attribution). `data/da_nang_central.json` remains a
-small explicit teaching/test fixture only. Set `ROUTING_DATASET_PATH` to load a
-different snapshot. A one-time Overpass/OSM export can use this schema:
+Required metadata fields are <code>id</code> and <code>name</code>. Nodes require <code>id</code>, <code>name</code>, <code>lat</code>, and <code>lon</code>. Edges require unique <code>id</code>, valid <code>source</code>/<code>target</code>, and positive <code>distance_m</code>.
 
-Hospital POIs are joined to retained road junctions by clearly tagged synthetic
-access connectors. Connectors target the mutually reachable road component so
-all 24 emergency destinations can be routed both to and from; OSM road
-directions themselves are left unchanged.
-
-```json
+~~~json
 {
   "metadata": {
-    "id": "unique-id",
-    "name": "Dataset name",
-    "city": "Da Nang",
-    "country": "Vietnam",
-    "version": "1.0",
-    "source": "OpenStreetMap contributors / query details",
-    "description": "...",
-    "generated_at": "optional ISO timestamp",
-    "disclaimer": "optional"
+    "id": "hcmc-city-centre-delivery-osm-2026",
+    "name": "Ho Chi Minh City Delivery Route Search Graph",
+    "city": "Thành phố Hồ Chí Minh",
+    "version": "2.0.0"
   },
   "nodes": [
     {
-      "id": "n1",
-      "name": "Hospital or intersection",
-      "kind": "hospital",
-      "lat": 16.06,
-      "lon": 108.22,
-      "attributes": {"osm_node_id": 123}
+      "id": "poi_way_152994798",
+      "name": "Co.op Mart",
+      "kind": "delivery_supermarket",
+      "lat": 10.7672833,
+      "lon": 106.6861395,
+      "attributes": {
+        "delivery_destination": true,
+        "delivery_category": "supermarket",
+        "routing_component": "primary"
+      }
     }
   ],
   "edges": [
     {
-      "id": "e1",
-      "source": "n1",
-      "target": "n2",
-      "distance_m": 420.5,
-      "speed_kph": 35,
+      "id": "hcmc_edge_0000",
+      "source": "node-a",
+      "target": "node-b",
+      "distance_m": 120.0,
+      "speed_kph": 35.0,
       "road_name": "Road name",
-      "road_class": "primary",
-      "risk": 0.1,
-      "emergency_access": true,
-      "bidirectional": true,
-      "reverse_id": "optional-custom-reverse-id",
-      "reverse_speed_kph": 30,
+      "road_class": "secondary",
+      "risk": 0.20,
+      "traversable": true,
+      "bidirectional": false,
       "attributes": {
-        "osm_way_id": 456,
-        "bridge": false,
-        "incident_prone": false,
-        "close_during_incident": false
+        "source_direction": "one-way",
+        "base_congestion": 2.4,
+        "geometry": [[106.68, 10.77], [106.681, 10.771]]
       }
     }
   ]
 }
-```
+~~~
 
-Required metadata fields are `id` and `name`. Required node fields are
-`id`, `name`, `lat`, and `lon`. Required edge fields are `id`, `source`,
-`target`, and positive `distance_m`. IDs must be unique and edge endpoints must
-exist. `bidirectional: true` expands one physical segment into two directed
-edges; omit it when an importer already emits each direction explicitly.
-Optional `attributes.geometry` is a GeoJSON-order coordinate array
-`[[longitude, latitude], ...]`. The loader validates it, reverses it when its
-orientation disagrees with `source -> target`, anchors both endpoints, and also
-reverses it for generated reverse edges.
+Geometry is optional. The loader validates coordinate ranges, orients the polyline from source to target, and anchors both endpoints. It never reads from the temporary scrape directory.
+
+## Importing the teammate export
+
+The migration script is:
+
+~~~powershell
+python scripts/import_hcmc_snapshot.py
+~~~
+
+Default inputs:
+
+- <code>backend/data-tmp/processed/graph.json</code>;
+- <code>backend/data-tmp/raw/hcmc_overpass.json</code>.
+
+Default output:
+
+- <code>backend/data/hcmc_delivery_osm_snapshot.json</code>.
+
+The input directory is intentionally git-ignored and is not a runtime package. The importer validates city, schema, unique IDs, endpoint references, direction pairs, coordinates, risk/congestion scales, time/speed reconstruction and graph size before writing the canonical snapshot. See <code>docs/DATASET.md</code> for exact provenance and measured statistics.
+
+## Scope
+
+The snapshot covers selected major roads and delivery POIs in a bounded central-HCMC area. It omits many local streets, alleys, turn restrictions and live access conditions. A route is an educational result on this snapshot, not turn-by-turn courier guidance.

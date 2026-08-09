@@ -1,404 +1,336 @@
-# Demo Video Script — chưa quay
+# Demo Video Script — HCMC Delivery Route Lab
 
-> Đây là kịch bản sản xuất, **không phải bằng chứng video đã tồn tại**. Thay mọi `[[...]]`, rehearsal trên final commit, rồi mới ghi hình. Thời lượng gợi ý 14–17 phút để giải thích đủ 8 thuật toán, heuristic, multi-stop và demo thực tế.
+> Chưa quay. Đây là runbook/narration cho final commit; thay presenter, commit và test output trước khi ghi hình.
 
 ## 1. Production card
 
-| Item | Value to fill |
+| Item | Value |
 |---|---|
-| Group / course | `[[GROUP_ID — COURSE]]` |
-| Final commit | `[[COMMIT]]` |
-| Dataset version | `1.0.0` — verified via `/api/v1/health` |
-| Presenter A | `[[NAME — context/data]]` |
-| Presenter B | `[[NAME — algorithms/heuristics]]` |
-| Presenter C | `[[NAME — app demo/multi-stop]]` |
-| Presenter D/E optional | `[[NAME — experiment/conclusion]]` |
-| Target duration | `[[14–17 minutes]]` |
-| Recording resolution | 1920×1080 minimum |
-| Published link | `[[NOT YET CREATED]]` |
+| Target length | 12–14 phút |
+| Capture | 1080p, browser zoom 90–100% |
+| UI | `http://localhost:5173` |
+| API proof | `http://127.0.0.1:8000/docs` |
+| Dataset | `hcmc-city-centre-delivery-osm-2026`, v2.0.0 |
+| Primary pair | Co.op Mart → Chợ Bến Thành |
+| Scenario | `morning_rush` |
+| Weights | `.25 / .50 / .20 / .05` |
+| Presenter | `[[Name]]` |
+| Final commit | `[[SHA]]` |
 
-### Required on-screen footer
+Footer phải đọc được khi map xuất hiện:
 
-Keep this readable whenever the map is visible:
+> © OpenStreetMap contributors · ODbL 1.0 · ETA/congestion/risk are deterministic educational estimates—not live or motorbike-legal navigation.
 
-> © OpenStreetMap contributors — ODbL 1.0 · Traffic/ETA/risk are deterministic educational simulations, not live dispatch advice.
+## 2. Original mini delivery graph
 
-## 2. Original illustrative graph
+Dùng một hình do nhóm tự vẽ, không lấy từ tutorial. Bối cảnh: shipper rời hub `H` để giao tại `D`.
 
-The lab asks for a group-designed illustration rather than a copied tutorial. Use this five-node “mini emergency corridor” derived from the repository's own algorithm test idea and redraw it in the group's visual style.
-
-```mermaid
-flowchart LR
-    S[Hiện trường S] -->|0.10| A[Giao lộ A]
-    A -->|0.10| H[Bệnh viện H]
-    S -->|0.04| B[Giao lộ B]
-    B -->|0.04| C[Giao lộ C]
-    C -->|0.04| H
+```text
+            cost 1            cost 8
+      H ─────────────► A ─────────────► D
+      │                                  ▲
+      │ cost 2                           │ cost 2
+      ▼                                  │
+      B ─────────────► C ────────────────┘
+            cost 2            cost 2
 ```
-
-Assume outgoing order from `S` is `A` then `B`.
 
 | Route | Hops | Composite cost |
 |---|---:|---:|
-| `S→A→H` | 2 | 0.20 |
-| `S→B→C→H` | 3 | 0.12 |
+| `H → A → D` | 2 | 9 |
+| `H → B → C → D` | 3 | 6 |
 
-Use the following safe heuristic to illustrate A*/Greedy:
+Suggested admissible illustration: `h(H)=5`, `h(A)=7`, `h(B)=4`, `h(C)=2`, `h(D)=0`.
 
-| Node | `h(n)` |
-|---|---:|
-| S | 0.08 |
-| A | 0.03 |
-| B | 0.07 |
-| C | 0.03 |
-| H | 0.00 |
+Điểm cần nói:
 
-It is admissible (`h` never exceeds true remaining optimum) and consistent for every shown edge. It is deliberately shaped so Greedy sees A as closest-looking, while A* still sees the cheaper B corridor after adding `g`.
+- BFS chọn route 2 hop nhưng cost 9;
+- UCS/Dijkstra chọn route cost 6;
+- A* với admissible `h` cũng tìm cost 6;
+- DFS phụ thuộc thứ tự adjacency;
+- Greedy chỉ nhìn `h`, nên không có weighted-optimal guarantee;
+- đây là graph minh họa, không phải số liệu từ HCMC snapshot.
 
-Do not say these decimal costs are kilometres or minutes. They are a small, group-designed **composite score** for explaining frontier behavior.
-
-## 3. Timeline and exact narration
+## 3. Timeline and narration
 
 ### 00:00–00:35 — Cold open
 
-**Shot:** finished UI full screen; route visible; quick cuts Route → Compare → Multi. Do not linger on loading/setup.
+**On screen:** HCMC dashboard, route result đã chạy, playback dừng giữa trace.
 
-**Presenter A:**
+**Narration:**
 
-> “Một tuyến ngắn hơn chưa chắc đưa xe cấp cứu tới bệnh viện sớm hơn. Project của nhóm mô hình hóa mạng đường trung tâm Đà Nẵng thành graph có hướng, rồi so sánh tám thuật toán tìm kiếm trên cùng một cost gồm khoảng cách, ETA mô phỏng, traffic delay và risk exposure. Đây là ứng dụng học thuật localhost; traffic và risk không phải dữ liệu thời gian thực.”
+> “Một tuyến ít chặng chưa chắc có tổng chi phí giao hàng tốt nhất. Project mô hình hóa mạng đường trung tâm Thành phố Hồ Chí Minh thành graph có hướng, rồi cho chúng ta nhìn trực tiếp cách BFS, DFS, UCS, A* và bốn thuật toán bổ sung mở rộng graph. Cost kết hợp distance, ETA mô phỏng, traffic delay và risk exposure.”
 
-**Overlay:** title, group ID, safety disclaimer, OSM attribution.
+### 00:35–01:20 — Problem and safety boundary
 
-### 00:35–01:20 — Problem and dataset
+**On screen:** title/overview và disclaimer.
 
-**Shot:** map overview, then a clean provenance split graphic.
+**Narration:**
 
-**Presenter A:**
+> “Bài toán là hỗ trợ học thuật cho shipper/courier: chọn điểm lấy hàng hoặc điểm đi, điểm giao, và có thể tối ưu nhiều điểm. Đây không phải navigation production. OSM là snapshot; traffic, road disruption, flood susceptibility và risk là ước lượng deterministic. Field traversable chỉ có nghĩa cung được dùng trong mô hình, không chứng nhận đường hợp pháp cho xe máy hay bất kỳ phương tiện cụ thể nào.”
 
-> “Topology, tên đường, hướng đi và hospital POI bắt nguồn từ snapshot OpenStreetMap qua một bounded Overpass query. Pipeline giữ primary, secondary và tertiary roads, co shape points giữa các giao lộ, giữ polyline và OSM IDs, rồi snap hospital POI vào junction gần nhất. Snapshot hiện có 512 node và 1.007 directed edge sau khi loader mở rộng các đoạn hai chiều.”
+### 01:20–02:10 — Dataset
 
-> “Phần congestion, ETA theo scenario, flood susceptibility, incident, closure và risk là lớp synthetic deterministic do nhóm tạo. Cùng input luôn cho cùng overlay, nhưng tuyệt đối không được gọi là live traffic.”
-
-**On-screen facts:** 5,903 raw road nodes → 488 contracted road nodes + 24 hospital POIs → 512 nodes; 756 base edge records → 1,007 directed edges.
-
-### 01:20–02:10 — Graph and cost model
-
-**Shot:** one directed edge highlighted; animate source/target, attributes, then formula.
-
-**Presenter A:**
-
-> “State là node hiện tại; action là đi qua một outgoing edge còn traversable; goal test là node hiện tại bằng bệnh viện được chọn. Edge đóng trong scenario hoặc không cho emergency access bị loại.”
-
-> “Backend chuẩn hóa bốn trọng số rồi tính: distance theo kilomet, travel time theo phút, traffic delay theo phút, và risk nhân kilomet exposure. Tổng route cost là tổng edge cost. Vì mọi thành phần không âm, UCS và Dijkstra có điều kiện tối ưu cần thiết.”
-
-**On screen:**
+**On screen:** dataset facts, small provenance diagram.
 
 ```text
-C(e)=ŵd·distance_km + ŵt·travel_minutes
-    + ŵc·delay_minutes + ŵr·(risk×distance_km)
+raw Overpass + processed teammate export
+                  │ validation / unit mapping / direction audit
+                  ▼
+backend/data/hcmc_delivery_osm_snapshot.json
+                  │ runtime load only
+                  ▼
+FastAPI + React
 ```
 
-**Callout:** congestion label 1–5 is visualization; numeric time/delay drives cost.
+**Narration:**
 
-### 02:10–04:40 — Eight pair-search algorithms on the original mini graph
+> “Runtime không đọc data-tmp. Importer fail-fast chuẩn hóa source thành canonical JSON và ghi source checksum. Snapshot có 1.103 node, 2.279 cung có hướng và 187 delivery POI. Có 85 strongly connected component; primary component có 992 node và chứa 172 POI. Vì graph có hướng, hai điểm gần nhau vẫn có thể không reachable hai chiều.”
 
-Keep the same graph on screen. Animate frontier, expanded nodes, `g/h/f`. Use a small table that updates; do not replace explanation with a wall of theory.
+**On-screen facts:**
 
-#### BFS — 20 seconds
+- 916 contracted road nodes + 187 delivery POIs = 1.103 nodes;
+- 1.039 one-way arcs + 1.240 two-way-derived arcs = 2.279 directed arcs;
+- 172/187 delivery POIs in primary SCC;
+- OSM base timestamp `2026-08-05T16:31:02Z`.
 
-**Presenter B:**
+### 02:10–03:05 — Graph and cost model
 
-> “BFS dùng FIFO và mở rộng theo tầng. Với adjacency A trước B, thứ tự expand là S, A, B, rồi H; parent đầu tiên của H tạo route S–A–H. BFS bảo đảm ít hop nhất trên finite graph, nhưng cost 0.20 cao hơn route ba hop cost 0.12.”
+**On screen:** one canonical node/edge and cost formula.
 
-Show queue after `S`: `[A,B]`; after `A`: `[B,H]`.
+**Narration:**
 
-#### DFS — 15 seconds
-
-> “DFS dùng LIFO, đi sâu nhánh A trước và tới H. Nó complete trong implementation finite-graph có discovered set, nhưng không tối ưu và rất nhạy thứ tự neighbor.”
-
-Show stack and emphasize no weighted comparison.
-
-#### UCS and Dijkstra — 30 seconds
-
-> “UCS chọn frontier có g nhỏ nhất. Nó đi S, B, C; dù A có thể được mở rộng trước goal tùy label, H cuối cùng nhận g bằng 0.12 và route S–B–C–H. Dijkstra trong backend dùng chính implementation này, nên hai nhãn có cùng chính sách và bảo đảm optimum với edge cost không âm.”
-
-Show relax values: `g(A)=.10`, `g(B)=.04`, `g(C)=.08`, `g(H)=.12`.
-
-#### A* — 30 seconds
-
-> “A* chọn f bằng g cộng h. Sau S: A có f 0.13, B có f 0.11. Nó chọn B, rồi C có f 0.11, H có f 0.12, nên tìm route cost 0.12. Với heuristic admissible và consistent, A* giữ bảo đảm optimum.”
-
-Show `g/h/f` labels and highlight why A* does not follow the visually close A.
-
-#### Greedy Best-First — 20 seconds
-
-> “Greedy chỉ nhìn h. Vì h(A)=0.03 nhỏ hơn h(B)=0.07, nó chọn A rồi H, trả cost 0.20. Nó thường ít expansion nhưng không có bảo đảm weighted optimum.”
-
-#### Bidirectional Dijkstra — 25 seconds
-
-> “Bidirectional Dijkstra chạy label từ S qua outgoing edge và từ H qua incoming edge. Khi hai wave có meeting cost tốt nhất và tổng hai minimum frontier không thể cải thiện nó, thuật toán dừng. Trên graph có hướng, backward wave bắt buộc dùng incoming edges.”
-
-Show two colors, meeting near B/C.
-
-#### IDA* — 25 seconds
-
-> “IDA* chạy depth-first với ngưỡng f. Ngưỡng bắt đầu 0.08, rồi tăng tới minimum f bị prune, lần lượt 0.11 và 0.12, cuối cùng tìm route cost 0.12. Nó dùng ít frontier memory nhưng re-expand nhiều; trong app, route dài có thể chạm max-expansions và trả limit_reached.”
-
-#### Summary — 15 seconds
-
-**On-screen table:** minimum hops vs minimum weighted cost vs heuristic vs memory.
-
-> “Complete và optimal là claim có điều kiện, không phải nhãn marketing. Expansion budget, edge costs và heuristic được ghi rõ trong metadata và explanation.”
-
-### 04:40–05:35 — Heuristic design
-
-**Shot:** Learn mode heuristic registry, then formula graphic.
-
-**Presenter B:**
-
-> “App có four heuristics. Zero luôn bằng 0. Haversine dùng great-circle distance đã scale theo minimum ratio giữa edge length và geometry để không overestimate. Travel-time lấy distance lower bound chia max graph speed, nên cũng optimistic. Ba heuristic này admissible và consistent.”
-
-> “Traffic-aware lấy mean traffic multiplier ở outgoing edges rồi chiếu tới goal. Nó có thể nhanh thực dụng nhưng có thể overestimate và inconsistent. Chọn nó với A* hoặc IDA* sẽ mất optimality guarantee, và UI/API phải hiện warning.”
-
-**Do:** point to admissible/consistent badges.
-
-### 05:35–06:15 — Architecture
-
-**Shot:** one clean architecture diagram; optional short code zoom, no scrolling through files.
-
-**Presenter A:**
-
-> “React gọi versioned FastAPI contract. Pydantic validate request; RoutingEngine ghép immutable RoadGraph, deterministic TrafficModel, CostCalculator, heuristic registry và search. Mọi thuật toán trả cùng trace schema. Multi-stop dùng directed Dijkstra matrix trước khi optimize order. Snapshot được build offline; app runtime không gọi Overpass.”
-
-Show: React → `/api/v1` → Engine → graph/cost/search/multi; OSM snapshot on disk; optional OSM tile requests from browser.
-
-### 06:15–08:20 — Live Route mode
-
-**Shot:** actual final app, browser zoom 100%, no devtools unless showing response intentionally.
-
-Use this reproducible case:
+> “State là node hiện tại; action là đi qua outgoing edge còn traversable và không bị scenario đóng; goal test là node hiện tại bằng delivery destination. Mỗi runtime record đã là một cung source-to-target. Source two-way đã có reverse record riêng, nên loader tuyệt đối không nhân đôi lần nữa.”
 
 ```text
-Start: osm_420248644 — Nút Đường Nguyễn Chí Thanh
-Goal: hospital_way_372433638 — Bệnh viện Đà Nẵng
-Algorithm: astar
+C(e) = ŵd·distance_km
+     + ŵt·travel_minutes
+     + ŵc·delay_minutes
+     + ŵr·(risk × distance_km)
+```
+
+> “UI objective chỉ là weight preset. Backend nhận bốn weight và normalize tỷ lệ; không có vehicle parameter giả.”
+
+### 03:05–05:05 — Algorithms on the mini graph
+
+#### BFS and DFS
+
+> “BFS dùng FIFO và mở rộng theo depth. Nó chọn H-A-D vì chỉ có 2 hop, nhưng composite cost là 9. DFS dùng LIFO, đi sâu theo adjacency order và không tối ưu hop hoặc weighted cost.”
+
+#### UCS and Dijkstra
+
+> “UCS luôn pop frontier có g nhỏ nhất. Trên model này Dijkstra và UCS dùng cùng core, nên cùng chọn H-B-C-D với cost 6. Guarantee dựa trên edge cost không âm.”
+
+#### A*
+
+**On screen:** `f=g+h` values.
+
+> “A* chọn minimum g+h. Với calibrated Haversine hoặc optimistic travel-time, h là admissible và consistent cho cost implementation, nên goal đầu tiên được pop là optimum nếu không chạm expansion limit.”
+
+#### Greedy, Bidirectional, IDA*
+
+> “Greedy chỉ nhìn h nên có thể mở rộng ít nhưng route tệ. Bidirectional Dijkstra chạy forward bằng outgoing edges và backward bằng incoming edges—đây là điều bắt buộc trên directed graph. IDA* tiết kiệm active frontier memory nhưng re-expand rất nhiều và có thể chạm max-expansions.”
+
+**Summary card:**
+
+```text
+BFS: minimum hops only
+DFS: adjacency-sensitive
+UCS/Dijkstra: weighted optimum, non-negative costs
+A*: weighted optimum with safe h
+Greedy: no optimum guarantee
+Bidirectional Dijkstra: exact, directed two-wave
+IDA*: conditional; operational limit matters
+```
+
+### 05:05–05:45 — Heuristics
+
+**On screen:** metadata registry.
+
+> “Zero, calibrated Haversine và optimistic travel-time là safe. Snapshot hiện có scale khoảng 0,824833527 và maximum speed 70 km/h; backend tính lại khi load dataset khác. Traffic-aware project local mean multiplier đến goal nên có thể overestimate; dùng nó sẽ gỡ guarantee của A* và IDA*.”
+
+### 05:45–06:25 — Architecture and compact graph API
+
+**On screen:** architecture diagram, Swagger `/graph` parameters.
+
+> “FastAPI cung cấp health, metadata, graph, traffic overlay, search, compare và multi-route. React tải graph compact một lần: geometry nằm một lần ở directed-edges và GeoJSON FeatureCollection rỗng. Khi đổi scenario, UI chỉ lấy status cạnh từ traffic endpoint rồi restyle theo từng frame nhỏ. Việc này giảm parse, allocation và long task trên main thread.”
+
+### 06:25–08:10 — Live Route mode
+
+Set input:
+
+```text
+Start: poi_way_152994798 — Co.op Mart
+Goal:  poi_way_39514795  — Chợ Bến Thành
+Algorithm: A*
 Heuristic: travel_time
 Scenario: morning_rush
-Weights: distance .25, travel_time .50, traffic_delay .20, risk .05
+Weights: .25 / .50 / .20 / .05
 ```
 
-**Presenter C actions and words:**
+**Actions:**
 
-1. Select start/goal by dropdown, then demonstrate that map clicks snap to nearest graph node.
-2. Select A*/travel-time/morning rush and show sliders.
-3. Click Run.
+1. chỉ start/goal marker và directed network;
+2. bấm tìm tuyến;
+3. pause playback ở giữa;
+4. step hai hoặc ba frame;
+5. chỉ current edge, explored tree và frontier links;
+6. đi tới final route, metrics, cost breakdown, explanation;
+7. mở alternative card.
 
-> “Response của run mẫu có 8 edge, khoảng 1.549 mét, ETA mô phỏng khoảng 173.5 giây và weighted cost khoảng 2.02076. Runtime sẽ khác theo máy nên chúng em không coi một con số milliseconds là định luật.”
+**Narration:**
 
-4. Point to cost breakdown and optimality.
+> “Frame không phải một dot nhảy ngẫu nhiên. Frontend reconstruct parent links từ trace để vẽ cây đã khám phá, frontier candidate và active edge. Với case này A* tìm weighted cost 4,781696, quãng đường 2 483 m, ETA mô phỏng 434,741 giây và mở rộng 470 node.”
 
-> “A* được gọi là optimal ở đây vì travel-time heuristic admissible/consistent và run không chạm expansion limit. Cost là optimum theo snapshot, scenario và weight hiện tại—not a real dispatch guarantee.”
+> “A* được gọi là optimum ở đây vì travel-time heuristic safe và run không chạm limit. Claim chỉ đúng cho snapshot, scenario, weights và implemented cost—không phải bảo đảm route ngoài đời.”
 
-5. Point to alternative.
+> “Alternative là candidate tốt nhất từ việc loại từng primary edge rồi chạy Dijkstra; không gọi nó là second-shortest path đầy đủ.”
 
-> “Tuyến đối chứng được tạo bằng cách lần lượt loại một edge của primary, chạy Dijkstra, rồi giữ candidate rẻ nhất. Trong case này nó cao hơn khoảng 2.01%. Đây là best single-primary-edge-exclusion candidate, không phải full k-shortest enumeration.”
+### 08:10–09:00 — Scenario sensitivity
 
-6. Play trace at 1×, pause midway, step forward/back; name current/frontier/visited and `g/h/f`.
+**On screen:** table/chart từ actual rerun.
 
-### 08:20–09:15 — Traffic scenario sensitivity
+| Scenario | Cost | Distance (m) | ETA (s) |
+|---|---:|---:|---:|
+| normal | 3.486893 | 2 588 | 318.508 |
+| morning rush | 4.781696 | 2 483 | 434.741 |
+| evening rush | 5.272845 | 2 792 | 466.168 |
+| heavy rain | 5.289770 | 2 616 | 473.116 |
+| road disruption | 4.287072 | 2 588 | 387.095 |
 
-**Shot:** keep same distant case for visible differences:
+> “Cùng start/goal và weight, scenario đổi ETA và có thể đổi topology optimum. Road-disruption hiện đóng 47 directed arc deterministic. Không có feed live và không random tại request time.”
 
-```text
-Start: osm_10177662786 — Nút Đường Hoàng Sa
-Goal: hospital_way_372433638 — Bệnh viện Đà Nẵng
-Algorithm: dijkstra
-Default weights
-```
+### 09:00–10:15 — Compare mode
 
-Run `normal`, then `morning_rush`, then `evening_rush` or use prepared screen recording from final app.
+**On screen:** BFS, UCS, A*, Greedy; optionally show all eight table.
 
-**Presenter C:**
+Key actual results:
 
-> “Normal cho ETA khoảng 665 giây. Morning rush tăng lên khoảng 891 giây và chọn một edge sequence khác. Evening rush khoảng 1.010 giây và lại đổi route. Những con số này tái lập từ deterministic scenario model, không phải đo ngoài đường.”
+| Algorithm | Status | Cost | Expanded | Hops |
+|---|---|---:|---:|---:|
+| BFS | found | 5.093109 | 444 | 17 |
+| UCS | found | 4.781696 | 723 | 22 |
+| A* | found | 4.781696 | 470 | 22 |
+| Greedy | found | 6.099368 | 50 | 29 |
+| Bidirectional Dijkstra | found | 4.781696 | 265 | 22 |
+| IDA* | limit reached | — | 100.000 | — |
 
-Optional incident shot:
+> “BFS có ít hop hơn nhưng cost cao hơn. Greedy mở rộng ít nhưng không optimum. A* giảm expansion so với Dijkstra, còn Bidirectional Dijkstra giảm mạnh ở case này. IDA* chạm 100 nghìn expansion; phải nói limit-reached, không nói unreachable. Runtime muốn so sánh nghiêm túc phải warm-up và dùng median/IQR.”
 
-> “Incident đóng 37 directed edges đã được gắn cờ deterministic. Closed edge bị loại; số đóng toàn graph không có nghĩa route nào cũng thay đổi.”
+### 10:15–11:35 — Multi-stop
 
-### 09:15–10:35 — Compare mode
-
-**Shot:** same start/goal/scenario/weights, select BFS, DFS, UCS, Dijkstra, A*, Greedy, Bidirectional and IDA* if UI/time permits.
-
-**Presenter D or C:**
-
-> “Compare giữ nguyên graph, traffic, endpoints và weights. Ranking ưu tiên found, rồi cost thấp, fewer expanded nodes và algorithm ID; runtime được hiển thị nhưng không dùng làm tie-break.”
-
-Point out:
-
-- BFS fewer hops but higher cost;
-- DFS detour;
-- UCS/Dijkstra same optimum policy;
-- A* fewer expansions than Dijkstra in the documented test;
-- Greedy matching optimum in this one case does not create a guarantee;
-- IDA* high re-expansion and small active frontier.
-
-> “Muốn kết luận runtime, cần nhiều repeats và median/IQR. Video chỉ trình bày một controlled demonstration.”
-
-### 10:35–12:20 — Multi-stop exact vs approximate
-
-**Shot:** Multi mode. Use a start in the largest strongly connected core so return-to-start is feasible.
+Input:
 
 ```text
-Start: osm_345351408 — Võ Nguyên Giáp × Hồ Xuân Hương
-Stops:
-  hospital_way_372433638 — Bệnh viện Đà Nẵng
-  hospital_way_372433951 — Bệnh viện C Đà Nẵng
-  hospital_node_729405662 — Bệnh viện Hoàn Mỹ Đà Nẵng
-  hospital_way_489789425 — Vinmec Đà Nẵng
-Return to start: true
+Start: Co.op Mart
+Stops: Chợ Bến Thành, Chợ Tân Định,
+       Co.opmart Rạch Miễu,
+       Trường Đại học Sài Gòn – cơ sở chính
+Return to start: yes
 Scenario: morning_rush
 ```
 
-**Presenter C:**
+| Method | Cost | Distance (m) | ETA (min) |
+|---|---:|---:|---:|
+| Nearest Neighbor | 27.202982 | 16 057 | 39.783 |
+| NN + 2-opt | 25.924372 | 15 187 | 37.975 |
+| Held–Karp | 25.924372 | 15 187 | 37.975 |
+| Seeded SA + 2-opt | 25.924372 | 15 187 | 37.975 |
 
-> “Backend trước hết chạy Dijkstra cho mọi ordered pair trong start plus stops. Với bốn stop là 20 search vì hướng A tới B có thể khác B tới A.”
+> “Mỗi pairwise leg dùng exact Dijkstra. Held–Karp tìm order exact trên directed pairwise matrix và giới hạn 10 stop. 2-opt giảm 4,7003 phần trăm so với Nearest Neighbor trong case này và tình cờ trùng exact result; điều đó không chứng minh 2-opt hay SA luôn optimum.”
 
-Run/show Nearest Neighbor:
+**Show:** requested order, optimized order, visit sequence và từng segment; không chỉ vẽ một polyline tổng.
 
-> “Nearest Neighbor có cost mẫu khoảng 30.71648. Nó approximate vì chọn stop rẻ nhất hiện tại.”
+### 11:35–12:20 — Validation and failure states
 
-Run/show 2-opt:
+**On screen:** một structured 422 và Learn tab.
 
-> “2-opt bắt đầu từ greedy và đảo subsequence khi cost giảm. Case này còn 28.52343, giảm khoảng 7.14%.”
+> “Strict request model reject unknown field. Unknown node, duplicate stop và quá nhiều Held–Karp stop có error envelope rõ. Unreachable do directed components khác expansion-limit. UI phải render trạng thái lỗi thân thiện, không leak traceback, JSON debug hoặc internal identifier không cần thiết.”
 
-Run/show Held–Karp:
+### 12:20–13:15 — Limitations and ethics
 
-> “Held–Karp cũng ra 28.52343 và bảo đảm exact trên directed pairwise matrix, nhưng exponential và API giới hạn 10 stop.”
+> “Snapshot bounded bỏ nhiều hẻm/residential road; turn restriction, lane, giờ cấm và công trường có thể thiếu. 15 delivery POI nằm ngoài primary SCC. POI connector là dữ liệu derived, không bảo đảm đúng cổng. Traffic, ETA và risk không live. Traversable không xác nhận tuyến hợp pháp cho xe máy. Multi-stop chưa có capacity, time window, service time hay nhiều shipper.”
 
-Mention SA:
+### 13:15–13:40 — Closing
 
-> “Simulated Annealing dùng seed cố định và cleanup 2-opt. Nó approximate dù trong case này cũng chạm cost exact. Matching one case không phải proof tổng quát.”
-
-Point to requested order vs optimized order, combined route, pairwise effort and explanation.
-
-### 12:20–13:10 — Validation and failure behavior
-
-**Shot:** Swagger or UI error state, then one short test-output shot from final run.
-
-**Presenter B:**
-
-> “API từ chối unknown node, duplicate stops, duplicate algorithms, weight total bằng zero và Held–Karp quá 10 stops bằng structured 422. Search phân biệt unreachable và limit_reached. Trace truncation không dừng search; nó chỉ giới hạn dữ liệu animation.”
-
-Show final actual commands/results:
-
-```text
-Backend verification: **28 pytest cases passed; 89% statement coverage** on Python 3.13.14 / Windows.
-
-Frontend verification: **4 Vitest tests passed; Vite production build passed; 2 Microsoft Edge Playwright e2e tests passed** (route/trace/compare plus theory/mobile flows).
-```
-
-Do not say “all tests pass” unless the captured final-commit output proves it.
-
-### 13:10–14:05 — Limitations and ethics
-
-**Shot:** limitations list over subdued map.
-
-**Presenter A:**
-
-> “Dataset chỉ giữ ba road classes trong một bounded area; turn restriction và alley có thể thiếu. Hospital connector là snap gần nhất, không xác nhận cổng hay năng lực tiếp nhận. Một số gateway nằm ngoài strongly connected core. Weights chưa được calibration bằng ambulance telemetry. Public OSM tiles là best-effort và chỉ dùng interactive theo policy.”
-
-> “Vì vậy project chứng minh cách mô hình hóa và so sánh AI search, không cung cấp chỉ dẫn cấp cứu.”
-
-### 14:05–14:35 — Closing
-
-**Shot:** route + compare + team credits.
-
-**Presenter A:**
-
-> “Kết quả chính là một hệ thống end-to-end có dữ liệu và provenance rõ, tám search algorithms, bốn heuristics, bốn multi-stop methods, trace thống nhất và explanation có điều kiện tối ưu. Source, report, dataset description và video link được đóng gói theo đúng format của lab.”
-
-Only keep the final sentence if packaging is actually complete at recording time; otherwise say “sẽ được đóng gói”.
+> “Project đáp ứng directed graph, cost bốn thành phần, bốn thuật toán bắt buộc, bốn thuật toán bổ sung, multi-stop, trace playback, metrics và explanation. Giá trị chính là nhìn thấy tại sao các search strategy khác nhau—không phải giả vờ thay thế navigation production.”
 
 ## 4. Shot list
 
-| # | Shot | Must be visible | Captured? |
-|---:|---|---|---:|
-| 1 | Cold open route | map, route, OSM attribution, disclaimer | [ ] |
-| 2 | Data provenance graphic | OSM vs derived vs synthetic | [ ] |
-| 3 | Mini graph BFS/DFS | queue/stack and expansion order | [ ] |
-| 4 | Mini graph UCS/Dijkstra | `g` relaxations | [ ] |
-| 5 | Mini graph A*/Greedy | `g/h/f` and different decisions | [ ] |
-| 6 | Mini graph bidirectional/IDA* | two waves and f thresholds | [ ] |
-| 7 | Heuristic registry | admissible/consistent/warning | [ ] |
-| 8 | Architecture | React/FastAPI/engine/data flow | [ ] |
-| 9 | Route configuration | start/goal/algorithm/weights/scenario | [ ] |
-| 10 | Trace playback | current/frontier/visited/reason | [ ] |
-| 11 | Metrics/explanation | distance/ETA/cost/expanded/runtime | [ ] |
-| 12 | Alternative | dashed route/card/difference | [ ] |
-| 13 | Scenario comparison | route/ETA difference | [ ] |
-| 14 | Compare | chart and table | [ ] |
-| 15 | Multi-stop NN | requested/optimized order | [ ] |
-| 16 | Multi-stop Held–Karp | exact badge/metrics | [ ] |
-| 17 | Error/validation | structured error, no crash | [ ] |
-| 18 | Final tests | actual final-commit terminal output | [ ] |
-| 19 | Limitations/credits | OSM/ODbL and safety | [ ] |
+| Shot | Required evidence |
+|---|---|
+| 1 | HCMC branding + OSM attribution + dataset online |
+| 2 | Original mini delivery graph |
+| 3 | Dataset provenance/counts/SCC |
+| 4 | Cost formula + edge direction |
+| 5 | Algorithm/heuristic registry |
+| 6 | Swagger compact `include_geojson` behavior |
+| 7 | A* setup and result |
+| 8 | Playback current/frontier/explored tree |
+| 9 | Cost breakdown/explanation/alternative |
+| 10 | Scenario sensitivity |
+| 11 | Compare result |
+| 12 | Multi requested/optimized order + segments |
+| 13 | Structured validation error |
+| 14 | Limitations + final test summary |
 
 ## 5. Recording runbook
 
 ### Before recording
 
-- [ ] Freeze final commit and dataset checksum.
-- [ ] Run backend tests and frontend lint/build.
-- [ ] Start backend on 127.0.0.1:8000 and frontend on localhost:5173.
-- [ ] Warm each demo request once; do not edit output values to make them look better.
-- [ ] Reset browser zoom, clear unrelated tabs/notifications/bookmarks.
-- [ ] Verify Vietnamese fonts/diacritics and map attribution at 1080p.
-- [ ] Prepare offline fallback: `VITE_ENABLE_OSM_TILES=false` plus graph geometry, and pre-rendered diagrams. Do not cache/scrape public OSM tiles for offline video.
-- [ ] Ensure no API key, username, personal path or notification is visible.
-- [ ] Rehearse exact node selections; use IDs in speaker notes.
+- [ ] Freeze commit and canonical dataset.
+- [ ] Run `scripts/check.ps1` successfully.
+- [ ] Verify `/health` reports 1.103/2.279 and v2.0.0.
+- [ ] Verify no console error in all four modes.
+- [ ] Clear stale query/cache and reload once.
+- [ ] Preselect exact IDs above.
+- [ ] Confirm HCMC viewport and attribution readable.
+- [ ] Remove debug panels, inspector overlays and notification noise.
+- [ ] Update every screenshot/table if code/data changed.
 
 ### During recording
 
-- [ ] Speak “simulated/deterministic” whenever first describing traffic/risk.
-- [ ] Pause long enough for viewers to read `g/h/f`, frontier and captions.
-- [ ] Keep pointer away from attribution/footer.
-- [ ] If a runtime differs from report, explain natural variability rather than re-recording only to chase a number.
-- [ ] If a route fails, read `status`: do not confuse `limit_reached` and `unreachable`.
+- [ ] Không cắt trước khi request/result state hoàn tất.
+- [ ] Di chuyển cursor chậm; highlight control trước khi click.
+- [ ] Pause playback để giải thích frontier tree.
+- [ ] Đọc đúng `limit_reached`, `unreachable`, `exact`, `approximate`.
+- [ ] Không gọi synthetic overlay là live.
+- [ ] Không gọi traversable là legal vehicle access.
 
 ### After recording
 
-- [ ] Add chapter titles/captions; captions match spoken caveats.
-- [ ] Check audio, frame rate, text readability and no cropped attribution.
-- [ ] Confirm every implemented pair algorithm is named and explained.
-- [ ] Confirm multi-stop exact/approximate distinction is spoken.
-- [ ] Export, watch end-to-end, then upload.
-- [ ] Test shared link in incognito/private window.
-- [ ] Put URL only in `[[GroupID - Video]].txt` as required.
-- [ ] Replace `[[NOT YET CREATED]]` in project records only after validation.
+- [ ] Kiểm tra audio, Vietnamese diacritics và map labels ở 1080p.
+- [ ] OSM attribution/disclaimer xuất hiện đủ lâu.
+- [ ] Không lộ path local, token, terminal secret hoặc debug traceback.
+- [ ] Link video mở được trong private window.
+- [ ] Transcript/slide dùng cùng facts với final commit.
 
-## 6. Presenter Q&A crib sheet
+## 6. Q&A crib sheet
 
-**Why not OSMnx at runtime?**  
-The application needs a deterministic, offline teaching graph and reproducible traces. A one-time Overpass snapshot plus a transparent standard-library contraction pipeline avoids runtime network/data drift. OSMnx would be a valid alternative ETL tool, not a requirement.
+**Why not use a complete map/navigation engine?**
 
-**Why is A* sometimes slower in milliseconds with fewer expansions?**  
-Heuristic calls and Python overhead cost time; small single runs are noisy. Expansion efficiency and wall-clock time are related but not identical.
+Lab tập trung search algorithms. Dataset là bounded directed snapshot và UI là visual laboratory; production navigation cần live data, legal vehicle profiles, turn restrictions và operational systems khác.
 
-**Why count travel time and delay separately?**  
-Travel time represents total ETA; delay is an extra controllable congestion aversion term. The report states the deliberate double sensitivity and lets weights control it.
+**Why can A* be optimal?**
 
-**Is Haversine always a lower bound when imported edge length is imperfect?**  
-The graph computes the minimum edge-distance/Haversine ratio, clamps it at 1, and scales all straight-line estimates by that factor.
+Khi dùng calibrated Haversine hoặc optimistic travel-time, heuristic là admissible/consistent cho implemented non-negative cost, và run không chạm expansion cap.
 
-**Is Held–Karp optimal?**  
-Yes for the computed directed pairwise weighted-cost matrix and supported stop count, assuming pair searches complete. It is not a guarantee about live real-world dispatch.
+**Why is traffic-aware unsafe for that claim?**
 
-**Why can multi-stop be unreachable?**  
-The graph is directed. A geographic cluster can lack a required directed return path; the largest strongly connected component should be used for a return-to-start demo.
+Local mean multiplier có thể overestimate true remaining cost và vi phạm consistency.
 
-**Does the alternative route equal the second-shortest path?**  
-Not generally. It is the cheapest Dijkstra result among runs that each exclude one edge of the primary route.
+**Why can nearby POIs be unreachable?**
 
-**Where does traffic come from?**  
-Project-defined deterministic scenario formulas; not from OSM and not a live API.
+Graph có hướng và có 85 SCC; proximity không tạo directed path.
+
+**Is Held–Karp globally optimal?**
+
+Chỉ exact trên computed directed pairwise matrix cho stop set, scenario, weights và return flag hiện tại, tối đa 10 stop, khi pair searches hoàn tất.
+
+**Does `traversable=true` mean a motorbike may legally use the road?**
+
+Không. Đó chỉ là model gate. Snapshot không đủ dữ liệu để xác nhận legal access cho một vehicle profile.
+
+**Why is compact graph API useful?**
+
+Frontend vẫn nhận mỗi edge polyline một lần nhưng không phải parse bản duplicate trong attributes và GeoJSON; GIS clients có thể opt in bằng `include_geojson=true`.

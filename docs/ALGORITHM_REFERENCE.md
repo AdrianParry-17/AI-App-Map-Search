@@ -8,7 +8,7 @@ Tài liệu này mô tả đúng implementation hiện tại của backend, khô
 - `g(n)`: accumulated weighted route cost;
 - `h(n)`: estimated remaining weighted cost;
 - `f(n)=g(n)+h(n)`;
-- mọi edge đóng hoặc `emergency_access=false` không thuộc graph khả dụng của run.
+- mọi edge đóng hoặc `traversable=false` không thuộc graph khả dụng của run.
 
 ## 1. Unified search contract
 
@@ -224,7 +224,7 @@ s = min(1, min_(u,v)∈E distance_m(u,v) / haversine_m(u,v))
 v_max = maximum free-flow speed in graph  # km/h
 ```
 
-The bundled graph has `s≈0.998783081` and `v_max=60` km/h. Calibration is recomputed for any loaded dataset.
+Snapshot HCMC hiện tại có `s≈0.824833527` và `v_max=70` km/h. Hai giá trị này được tính lại khi nạp dataset khác; không được hard-code vào thuật toán.
 
 | ID | Formula | Admissible | Consistent | Intended use |
 |---|---|---:|---:|---|
@@ -365,7 +365,7 @@ State `(mask,last)` stores minimum cost from start visiting exactly `mask` and e
 - Exact for the supplied directed pairwise matrix.
 - API cap: 10 stops.
 
-“Exact” includes the current scenario/weights and exact Dijkstra pair legs; it does not certify a real ambulance journey.
+“Exact” chỉ đúng trên ma trận chi phí có hướng được tính với snapshot, scenario và weights hiện tại, dùng Dijkstra chính xác cho từng chặng. Nó không chứng nhận một lịch giao hàng tối ưu ngoài đời thật.
 
 ### 14.4 Nearest Neighbor + 2-opt
 
@@ -412,5 +412,13 @@ Claims to avoid:
 - “IDA* failed, therefore the destination is unreachable” when status is `limit_reached`.
 - “Traffic-aware heuristic is admissible.”
 - “Bidirectional always explores half the graph.”
-- “Held–Karp finds the globally best real-world ambulance plan.”
+- “Held–Karp finds the globally best real-world delivery plan.”
 - “Alternative is the second-shortest route” without the single-edge-exclusion qualifier.
+
+Thay bằng: “Held–Karp tìm thứ tự có tổng chi phí nhỏ nhất trên ma trận pairwise có hướng đã tính, trong giới hạn số stop hỗ trợ và khi mọi pair search hoàn tất.”
+
+## 17. Domain and safety boundary
+
+Các thuật toán chỉ giải bài toán graph của phòng lab giao hàng tại khu vực trung tâm Thành phố Hồ Chí Minh. Snapshot hiện có 1.103 node và 2.279 cung có hướng; topology/tags đến từ một snapshot OSM, còn ETA, congestion, road disruption, flood susceptibility và risk là lớp ước lượng/mô phỏng deterministic.
+
+`traversable=true` chỉ có nghĩa cung được phép tham gia mô hình tìm kiếm. Nó **không** xác nhận đường đó hợp pháp hoặc phù hợp cho xe máy, ô tô, xe tải hay người đi bộ; dataset cũng không mô hình hóa đầy đủ turn restriction, biển cấm, làn xe, giờ cấm hoặc điều kiện hiện trường. Vì vậy output là bằng chứng thuật toán học thuật, không phải hướng dẫn navigation live hay tư vấn pháp lý giao thông.

@@ -86,3 +86,32 @@ def test_loader_reports_unknown_node_reference(tmp_path):
     )
     with pytest.raises(DatasetLoadError, match="unknown target"):
         load_dataset(path)
+
+
+def test_loader_preserves_explicit_traversability(tmp_path):
+    path = tmp_path / "traversability.json"
+    path.write_text(
+        json.dumps(
+            {
+                "metadata": {"id": "delivery", "name": "Delivery"},
+                "nodes": [
+                    {"id": "hub", "name": "Hub", "lat": 10.77, "lon": 106.68},
+                    {"id": "stop", "name": "Stop", "lat": 10.78, "lon": 106.69},
+                ],
+                "edges": [
+                    {
+                        "id": "restricted",
+                        "source": "hub",
+                        "target": "stop",
+                        "distance_m": 1500,
+                        "traversable": False,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    _, graph = load_dataset(path)
+
+    assert graph.edge("restricted").traversable is False

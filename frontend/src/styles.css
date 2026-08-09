@@ -1,5 +1,5 @@
 /* ========================================================================== 
-   DA NANG ROUTE INTELLIGENCE — emergency command-center interface
+   HCMC DELIVERY INTELLIGENCE — courier route-search laboratory
    ========================================================================== */
 
 @property --scan-position {
@@ -578,6 +578,16 @@ svg {
   filter: drop-shadow(0 0 5px rgba(52, 211, 153, 0.45));
 }
 
+.status-pill.failed {
+  color: #fda4af;
+  border-color: rgba(251, 113, 133, 0.3);
+  background: rgba(127, 29, 55, 0.2);
+}
+
+.status-pill.failed svg {
+  color: #fb7185;
+}
+
 .status-pill.idle svg {
   color: #6f8498;
 }
@@ -931,6 +941,10 @@ select option {
   border-color: rgba(192, 132, 252, 0.44);
   background: rgba(126, 63, 174, 0.3);
   box-shadow: 0 0 14px rgba(192, 132, 252, 0.09);
+}
+
+.multi-stops-block .stop-picker {
+  margin-top: 10px;
 }
 
 .stop-chips {
@@ -1782,7 +1796,7 @@ input[type="range"]::-moz-range-thumb {
     rgba(3, 15, 27, 0.9);
   box-shadow: 0 13px 30px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.04);
   pointer-events: none;
-  backdrop-filter: blur(13px) saturate(135%);
+  background-color: rgba(3, 15, 27, 0.96);
   animation: hud-enter 220ms var(--ease-out) both;
 }
 
@@ -1874,13 +1888,9 @@ input[type="range"]::-moz-range-thumb {
   filter: drop-shadow(0 0 3px currentColor);
 }
 
-.search-tree-frontier,
 .search-edge-active {
-  animation: search-flow 620ms linear infinite;
-}
-
-.search-edge-active {
-  filter: drop-shadow(0 0 4px #38d9ff) drop-shadow(0 0 9px rgba(56, 217, 255, 0.6));
+  animation: active-edge-pulse 760ms ease-in-out infinite alternate;
+  will-change: opacity;
 }
 
 .search-edge-glow {
@@ -2166,6 +2176,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .route-strip,
+.delivery-legs-card,
 .explanation-card,
 .breakdown-card,
 .alternative-card,
@@ -2245,6 +2256,67 @@ input[type="range"]::-moz-range-thumb {
   font-size: 0.62rem;
   line-height: 1.45;
   text-align: center;
+}
+
+.delivery-leg-list {
+  display: grid;
+  max-height: 170px;
+  gap: 6px;
+  margin-top: 9px;
+  overflow: auto;
+}
+
+.delivery-leg {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid rgba(52, 211, 153, 0.12);
+  border-radius: 9px;
+  background: rgba(20, 73, 58, 0.1);
+}
+
+.delivery-leg > i {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  color: #052019;
+  border-radius: 7px;
+  background: var(--green);
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.delivery-leg > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.delivery-leg > span strong,
+.delivery-leg > span small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delivery-leg > span strong {
+  color: #cfe9df;
+  font-size: 0.61rem;
+}
+
+.delivery-leg > span small,
+.delivery-leg > b {
+  color: #7fa394;
+  font-size: 0.54rem;
+  font-weight: 560;
+}
+
+.delivery-leg > b {
+  grid-column: 2;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 }
 
 .explanation-card {
@@ -3105,8 +3177,9 @@ input[type="range"]::-moz-range-thumb {
   to { transform: scaleX(1); }
 }
 
-@keyframes search-flow {
-  to { stroke-dashoffset: -36; }
+@keyframes active-edge-pulse {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
 }
 
 @keyframes search-node-pulse {

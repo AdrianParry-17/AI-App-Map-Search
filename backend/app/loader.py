@@ -119,8 +119,8 @@ def load_dataset(path: str | Path) -> tuple[DatasetMetadata, RoadGraph]:
     metadata = DatasetMetadata(
         id=str(_required(meta_raw, "id", "metadata")),
         name=str(_required(meta_raw, "name", "metadata")),
-        city=str(meta_raw.get("city", "Da Nang")),
-        country=str(meta_raw.get("country", "Vietnam")),
+        city=str(meta_raw.get("city", "Thành phố Hồ Chí Minh")),
+        country=str(meta_raw.get("country", "Việt Nam")),
         version=str(meta_raw.get("version", "1")),
         source=str(meta_raw.get("source", "unknown")),
         description=str(meta_raw.get("description", "")),
@@ -180,7 +180,7 @@ def load_dataset(path: str | Path) -> tuple[DatasetMetadata, RoadGraph]:
                 "road_name": str(value.get("road_name", "Unnamed road")),
                 "road_class": str(value.get("road_class", "local")),
                 "risk": float(value.get("risk", 0.1)),
-                "emergency_access": bool(value.get("emergency_access", True)),
+                "traversable": bool(value.get("traversable", True)),
             }
             directed_edges.append(
                 DirectedEdge(

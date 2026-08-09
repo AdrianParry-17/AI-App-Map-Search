@@ -1,5 +1,7 @@
 # FastAPI Contract — `/api/v1`
 
+Contract này mô tả backend v2.0.0 của **HCMC Delivery Route Lab**. API phục vụ việc học và so sánh thuật toán tìm kiếm trên snapshot đường phố trung tâm Thành phố Hồ Chí Minh; nó không phải dịch vụ traffic/navigation live và không xác nhận một cung đường hợp pháp cho xe máy hay bất kỳ loại phương tiện cụ thể nào.
+
 ## 1. Service URLs
 
 | Resource | Development URL |
@@ -10,70 +12,47 @@
 | OpenAPI JSON | `http://127.0.0.1:8000/api/v1/openapi.json` |
 | React dev UI | `http://localhost:5173` |
 
-The React dev server proxies `/api/*` to `http://127.0.0.1:8000`. `VITE_API_BASE_URL` may point the client directly to another API base. Backend CORS defaults allow localhost/127.0.0.1 on ports 5173 and 4173.
-
-Backend environment variables actually read by the application:
+Vite proxy `/api/*` sang backend trong cấu hình development. Các biến môi trường backend:
 
 | Variable | Meaning |
 |---|---|
-| `ROUTING_DATASET_PATH` | override bundled dataset JSON path |
-| `CORS_ORIGINS` | comma-separated exact origins |
+| `ROUTING_DATASET_PATH` | override đường dẫn snapshot JSON đã chuẩn hóa |
+| `CORS_ORIGINS` | danh sách exact origin, phân cách bằng dấu phẩy |
 
 ## 2. General conventions
 
-- Media type: `application/json`.
-- IDs are case-sensitive strings.
-- Request models are strict: unknown fields are rejected (`extra="forbid"`).
-- GeoJSON coordinates are `[longitude, latitude]`.
-- `request_id` is a new UUID per generated search/compare/multi response.
-- Traffic/route output is deterministic for the same code, dataset and request except `request_id` and measured `runtime_ms`.
-- Cost weights are non-negative and normalized internally; their ratio matters.
-- This is an educational API, not a live traffic/dispatch service.
+- Media type là `application/json`.
+- ID phân biệt hoa/thường.
+- Request model là strict; field lạ bị từ chối bằng HTTP 422.
+- GeoJSON dùng thứ tự `[longitude, latitude]`.
+- Cost weight phải không âm, mỗi giá trị trong `[0,100]`, và tổng phải dương.
+- Backend chuẩn hóa tỷ lệ weight; vì vậy `[1,2,3,4]` và `[10,20,30,40]` tương đương.
+- Route/traffic output deterministic cho cùng code, dataset và request, ngoại trừ `request_id` và `runtime_ms`.
+- `status=limit_reached` khác `status=unreachable`.
+- UI objective như “Balanced”, “Shortest distance” và “Fastest ETA” là preset tạo `cost_weights`; API không nhận field `objective` hay `vehicle` giả.
 
 ### 2.1 Enum registry
 
-Algorithms:
-
 ```text
-bfs
-dfs
-ucs
-dijkstra
-astar
-greedy_best_first
-bidirectional_dijkstra
-ida_star
+algorithms:
+  bfs, dfs, ucs, dijkstra, astar, greedy_best_first,
+  bidirectional_dijkstra, ida_star
+
+heuristics:
+  zero, haversine, travel_time, traffic_aware
+
+scenarios:
+  normal, morning_rush, evening_rush, heavy_rain, incident
+
+multi-route methods:
+  nearest_neighbor, held_karp, two_opt, simulated_annealing
 ```
 
-Heuristics:
+`incident` nghĩa là kịch bản gián đoạn/đóng đường deterministic, không phải sự cố được lấy từ feed live.
 
-```text
-zero
-haversine
-travel_time
-traffic_aware
-```
+### 2.2 Cost model
 
-Scenarios:
-
-```text
-normal
-morning_rush
-evening_rush
-heavy_rain
-incident
-```
-
-Multi-route methods:
-
-```text
-nearest_neighbor
-held_karp
-two_opt
-simulated_annealing
-```
-
-### 2.2 Cost weights
+Request mặc định:
 
 ```json
 {
@@ -84,11 +63,20 @@ simulated_annealing
 }
 ```
 
-Each number is in `[0,100]`; at least one must be positive. Backend normalizes the four numbers to sum to 1, then uses kilometres, travel minutes, delay minutes and `risk × kilometres`. The HTTP field is `traffic_delay`, while the React view model calls this slider `congestion`.
+Sau khi chuẩn hóa weight, mỗi cung dùng:
+
+```text
+cost(e) = ŵ_distance × distance_km
+        + ŵ_time     × travel_minutes
+        + ŵ_delay    × delay_minutes
+        + ŵ_risk     × (risk × distance_km)
+```
+
+`risk`, congestion, ETA, flood susceptibility và road disruption là dữ liệu/ước lượng giáo dục có provenance; không phải phép đo hiện trường.
 
 ## 3. Error envelope
 
-All application and request-validation errors share a top-level `error` object:
+Application error và validation error dùng một top-level envelope:
 
 ```json
 {
@@ -97,8 +85,7 @@ All application and request-validation errors share a top-level `error` object:
     "message": "Unknown start node 'missing'",
     "details": {
       "role": "start",
-      "node_id": "missing",
-      "available_nodes": ["..."]
+      "node_id": "missing"
     }
   }
 }
@@ -106,46 +93,41 @@ All application and request-validation errors share a top-level `error` object:
 
 | HTTP | Typical code | Cause |
 |---:|---|---|
-| 422 | `validation_error` | enum/range/length/strict-field Pydantic validation |
-| 422 | `unknown_node` | start, goal or stop not present |
-| 422 | `invalid_search_configuration` | invalid algorithm/heuristic at engine boundary |
-| 422 | `duplicate_algorithms` | repeated compare algorithm |
-| 422 | `duplicate_start` / `duplicate_stops` | invalid multi-stop identity set |
-| 422 | `invalid_multi_route_method` | unknown method at engine boundary |
-| 422 | `too_many_stops` | Held–Karp over 10 stops |
-| 422 | `multi_route_unreachable` | no finite order visits all stops under scenario |
-| 422 | `multi_route_failed` | optimizer rejected configuration |
-| 503 | `service_unavailable` | engine not present in application state |
+| 422 | `validation_error` | enum/range/strict field sai; duplicate algorithm/stop; start nằm trong stops; Held–Karp >10 stop |
+| 422 | `unknown_node` | start, goal hoặc stop không tồn tại |
+| 422 | `multi_route_unreachable` | không có thứ tự hữu hạn ghé hết stop trong directed graph |
+| 422 | `multi_route_failed` | optimizer không thể xử lý cấu hình đã qua HTTP validation |
+| 503 | `service_unavailable` | engine/dataset chưa sẵn sàng |
 
-Most malformed values are rejected by enums/models before engine-specific codes are reached. A dataset load error normally aborts application startup rather than serving partial graph state.
+Các code như `invalid_search_configuration`, `duplicate_start`, `duplicate_stops` và `too_many_stops` vẫn bảo vệ engine khi được gọi trực tiếp. Qua HTTP contract hiện tại, enum/model validator chặn các trường hợp tương ứng trước và trả `validation_error`.
+
+Dataset load error làm application startup thất bại thay vì phục vụ graph một phần.
 
 ## 4. `GET /health`
 
-Readiness plus active dataset identity.
+Readiness của process và dataset hiện được nạp:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/health
 ```
 
-Bundled snapshot response shape:
-
 ```json
 {
   "status": "ok",
-  "service": "Da Nang Emergency Route Lab API",
-  "version": "1.0.0",
-  "dataset_id": "danang-central-emergency-osm-2026",
-  "dataset_version": "1.0.0",
-  "node_count": 512,
-  "directed_edge_count": 1007
+  "service": "HCMC Delivery Route Lab API",
+  "version": "2.0.0",
+  "dataset_id": "hcmc-city-centre-delivery-osm-2026",
+  "dataset_version": "2.0.0",
+  "node_count": 1103,
+  "directed_edge_count": 2279
 }
 ```
 
-This is process/dataset readiness only; it does not assert internet tile access or live-traffic health.
+Endpoint này không kiểm tra internet tile, live traffic hoặc tính hợp pháp của route ngoài đời.
 
 ## 5. `GET /metadata`
 
-Returns the client-discoverable registry:
+Trả registry để client không cần hard-code algorithm/scenario:
 
 ```text
 api
@@ -159,70 +141,51 @@ defaults
 trace_schema
 ```
 
-Selected shapes:
+Selected values của snapshot bundled:
 
 ```json
 {
   "api": {
-    "name": "Da Nang Emergency Route Lab API",
-    "version": "1.0.0",
-    "contract_version": "2026-08-05"
+    "name": "HCMC Delivery Route Lab API",
+    "version": "2.0.0",
+    "contract_version": "2026-08-09"
+  },
+  "dataset": {
+    "id": "hcmc-city-centre-delivery-osm-2026",
+    "name": "Ho Chi Minh City Delivery Route Search Graph",
+    "city": "Thành phố Hồ Chí Minh",
+    "version": "2.0.0"
   },
   "graph": {
-    "node_count": 512,
-    "directed_edge_count": 1007,
-    "distance_lower_bound_scale": 0.998783081,
-    "max_speed_kph": 60.0,
+    "node_count": 1103,
+    "directed_edge_count": 2279,
+    "distance_lower_bound_scale": 0.824833527,
+    "max_speed_kph": 70.0,
     "bounding_box": {
-      "south": 16.0142064,
-      "west": 108.1856676,
-      "north": 16.1014314,
-      "east": 108.2575782
+      "south": 10.7483071,
+      "west": 106.6614172,
+      "north": 10.806955,
+      "east": 106.7194435
     }
-  },
-  "defaults": {
-    "algorithm": "astar",
-    "heuristic": "travel_time",
-    "scenario": "normal",
-    "cost_weights": {
-      "distance": 0.25,
-      "travel_time": 0.5,
-      "traffic_delay": 0.2,
-      "risk": 0.05
-    },
-    "multi_route_method": "nearest_neighbor"
   }
 }
 ```
 
-The runtime bounding box is calculated from actual stored node coordinates. It can extend beyond the query box because Overpass returns referenced way nodes and the builder may use a way's available-node centre. Client code should consume response values rather than hard-code counts/bounds.
-
-Algorithm metadata fields:
-
-```text
-id, label, family, weighted, heuristic_required,
-complete, optimality, description
-```
-
-Heuristic fields:
-
-```text
-id, label, description, admissible, consistent, warning
-```
+Metadata dataset còn ghi source timestamp, bbox query, license, attribution, stats và disclaimer. Client phải đọc response thay vì hard-code count/bounds vì dataset thay thế có thể khác.
 
 ## 6. `GET /graph`
 
 ```http
-GET /api/v1/graph?scenario=morning_rush
+GET /api/v1/graph?scenario=normal&include_geojson=false&compact=true
 ```
 
-Query:
+| Query | Default | Meaning |
+|---|---|---|
+| `scenario` | `normal` | một enum scenario |
+| `include_geojson` | `false` | populate FeatureCollection trùng geometry cho GIS client |
+| `compact` | `false` | chỉ giữ attribute cần cho interactive map; không đổi node/edge/geometry |
 
-| Name | Required | Default | Values |
-|---|---:|---|---|
-| `scenario` | no | `normal` | scenario enum |
-
-Response:
+Top-level response:
 
 ```text
 dataset
@@ -233,67 +196,107 @@ directed_edges[]
 graph_geojson
 ```
 
-Node:
+### 6.1 Payload shaping cho React và GIS
+
+React gọi `compact=true&include_geojson=false`. Mỗi `directed_edges[i].geometry` vẫn có polyline đầy đủ; `compact` chỉ bỏ provenance/tag chi tiết không dùng khi render. Bản coordinate trùng trong `directed_edges[i].attributes.geometry` luôn bị loại. `graph_geojson` vẫn có shape ổn định nhưng rỗng:
 
 ```json
 {
-  "id": "hospital_way_372433638",
-  "name": "Bệnh viện Đà Nẵng",
-  "kind": "hospital",
-  "lat": 16.0726877,
-  "lon": 108.215515,
+  "type": "FeatureCollection",
+  "features": []
+}
+```
+
+Dùng `include_geojson=true` khi một GIS client thật sự cần FeatureCollection; khi đó `features` có 2.279 LineString. Không bật chỉ để render frontend vì sẽ buộc browser parse hai bản geometry tương đương.
+
+### 6.2 Overlay nhẹ khi đổi scenario
+
+Frontend tải topology/geometry một lần rồi chỉ gọi endpoint nhẹ này khi đổi scenario:
+
+```http
+GET /api/v1/traffic?scenario=heavy_rain
+```
+
+```json
+{
+  "scenario": {
+    "id": "heavy_rain",
+    "label": "Heavy rain",
+    "description": "Reduced speeds, especially on bridges and higher-risk segments.",
+    "base_multiplier": 1.34,
+    "jitter": 0.22
+  },
+  "edges": [{
+    "edge_id": "hcmc_edge_0000",
+    "multiplier": 1.978806,
+    "effective_speed_kph": 15.160657,
+    "travel_time_s": 4.986591,
+    "congestion": "severe",
+    "closed": false
+  }]
+}
+```
+
+Response có đúng một status ngắn cho mỗi cung, không lặp node, topology hay geometry. React áp overlay theo `edge_id` và cập nhật style theo từng animation-frame chunk để tránh khóa main thread.
+
+### 6.3 Node
+
+```json
+{
+  "id": "poi_way_39514795",
+  "name": "Chợ Bến Thành",
+  "kind": "delivery_market",
+  "lat": 10.7725474,
+  "lon": 106.6979498,
   "attributes": {
     "osm_type": "way",
-    "osm_id": 372433638,
-    "emergency_destination": true,
-    "snap_distance_m": 133.13
+    "osm_id": 39514795,
+    "delivery_destination": true,
+    "delivery_category": "market",
+    "routing_component": "primary"
   }
 }
 ```
 
-The hospital example above reflects the bundled snapshot; use the endpoint rather than hard-coding it for regenerated datasets.
+POI gồm market, supermarket, university, bus station và hospital. `delivery_hospital` chỉ là một category điểm giao/nhận và không được ưu tiên hay ép làm đích.
 
-Directed edge:
+### 6.4 Directed edge
 
 ```json
 {
-  "id": "osm_path_...",
-  "source": "osm_...",
-  "target": "osm_...",
-  "distance_m": 420.5,
-  "speed_kph": 40.0,
-  "road_name": "Đường ...",
-  "road_class": "secondary",
-  "risk": 0.12,
-  "emergency_access": true,
+  "id": "hcmc_edge_0000",
+  "source": "osm_366476402",
+  "target": "osm_366367996",
+  "distance_m": 21.0,
+  "speed_kph": 30.0,
+  "road_name": "Trường Sa",
+  "road_class": "tertiary",
+  "risk": 0.3,
+  "traversable": true,
+  "direction": "one-way",
   "attributes": {
-    "osm_way_ids": [123456],
-    "bridge": false,
-    "flood_prone": false,
-    "incident_prone": false,
-    "close_during_incident": false,
-    "overlay_provenance": "deterministic synthetic educational layer",
-    "geometry": [[108.2, 16.06], [108.21, 16.065]]
+    "incident_prone": true,
+    "base_congestion": 2.96
   },
-  "geometry": [[108.2, 16.06], [108.21, 16.065]],
+  "geometry": [[106.6668087, 10.7905407], [106.6666537, 10.7906471]],
   "traffic": {
-    "edge_id": "osm_path_...",
-    "scenario": "morning_rush",
-    "multiplier": 1.54,
-    "effective_speed_kph": 25.974026,
-    "free_flow_time_s": 37.845,
-    "travel_time_s": 58.2813,
-    "delay_s": 20.4363,
-    "congestion": "heavy",
+    "edge_id": "hcmc_edge_0000",
+    "scenario": "normal",
+    "multiplier": 1.213717,
+    "effective_speed_kph": 24.717459,
+    "free_flow_time_s": 2.52,
+    "travel_time_s": 3.058567,
+    "delay_s": 0.538567,
+    "congestion": "moderate",
     "closed": false,
-    "reason": "Morning rush hour; major-road demand; stable edge variation"
+    "reason": "Normal traffic; snapshot baseline 2.96/5; stable edge variation"
   }
 }
 ```
 
-Numeric values in the edge example are illustrative. When closed, `effective_speed_kph=0`, `travel_time_s=null`, `delay_s=null`, `congestion="closed"`.
+Mọi record runtime đã là một cung `source → target`. `direction="two-way"` cho biết cung bắt nguồn từ đoạn đường hai chiều; chiều ngược là một record khác. Không nhân đôi lại các record này.
 
-`graph_geojson` is a FeatureCollection with exactly one LineString feature per directed edge. Feature properties include edge ID, endpoints, name/class, distance, scenario, congestion, closed and multiplier.
+`traversable` là gate của **mô hình** cùng với `traffic.closed`. Nó không phải xác nhận quyền lưu thông thực tế cho xe máy/ô tô/xe tải/người đi bộ. Snapshot không bao phủ đầy đủ turn restriction, biển cấm, lane restriction hoặc giờ cấm.
 
 ## 7. `POST /search`
 
@@ -301,8 +304,8 @@ Numeric values in the edge example are illustrative. When closed, `effective_spe
 
 ```json
 {
-  "start_id": "osm_420248644",
-  "goal_id": "hospital_way_372433638",
+  "start_id": "poi_way_152994798",
+  "goal_id": "poi_way_39514795",
   "algorithm": "astar",
   "heuristic": "travel_time",
   "scenario": "morning_rush",
@@ -319,37 +322,28 @@ Numeric values in the edge example are illustrative. When closed, `effective_spe
 }
 ```
 
-| Field | Required | Default / bounds |
-|---|---:|---|
-| `start_id`, `goal_id` | yes | 1–128 chars, must exist |
-| `algorithm` | no | `astar` |
-| `heuristic` | no | `travel_time`; validated even if algorithm does not use it |
-| `scenario` | no | `normal` |
-| `cost_weights` | no | backend defaults |
-| `include_trace` | no | true |
-| `max_trace_events` | no | 1,000; `0..10,000` |
-| `max_expansions` | no | 100,000; `1..1,000,000` |
-| `include_alternative` | no | true |
-
-PowerShell:
+PowerShell example:
 
 ```powershell
 $body = @{
-  start_id = 'osm_420248644'
-  goal_id = 'hospital_way_372433638'
+  start_id = 'poi_way_152994798'
+  goal_id = 'poi_way_39514795'
   algorithm = 'astar'
   heuristic = 'travel_time'
   scenario = 'morning_rush'
-} | ConvertTo-Json
+  cost_weights = @{ distance=.25; travel_time=.5; traffic_delay=.2; risk=.05 }
+  include_trace = $true
+  max_trace_events = 1000
+  max_expansions = 100000
+  include_alternative = $true
+} | ConvertTo-Json -Depth 5
 
-Invoke-RestMethod `
+Invoke-RestMethod -Method Post `
   -Uri http://127.0.0.1:8000/api/v1/search `
-  -Method Post `
-  -ContentType 'application/json' `
-  -Body $body
+  -ContentType application/json -Body $body
 ```
 
-### 7.2 Response shape
+### 7.2 Response
 
 ```text
 request_id, status, found, start_id, goal_id,
@@ -358,161 +352,60 @@ path, edge_ids, route_geojson,
 metrics, trace, explanation, alternative, cost_breakdown
 ```
 
-Abridged successful example (runtime/UUID may differ):
+Important invariants khi `found=true`:
+
+- `path[0] == start_id` và `path[-1] == goal_id`;
+- `len(edge_ids) == len(path)-1`;
+- `edge_ids[i]` nối đúng `path[i] → path[i+1]`;
+- route geometry dùng `[longitude, latitude]`;
+- `metrics.path_cost == cost_breakdown.total_cost == Σ cost_breakdown.components`.
+
+`route_geojson` của backend là một GeoJSON geometry. Ví dụ rút gọn dưới đây chỉ minh họa shape và hai endpoint; response thật giữ toàn bộ intermediate coordinates:
 
 ```json
 {
-  "request_id": "<uuid>",
-  "status": "found",
-  "found": true,
-  "start_id": "osm_420248644",
-  "goal_id": "hospital_way_372433638",
-  "algorithm": {
-    "id": "astar",
-    "label": "A* Search",
-    "family": "informed",
-    "weighted": true,
-    "heuristic_required": true,
-    "complete": true,
-    "optimality": "Optimal with an admissible, consistent heuristic.",
-    "description": "Orders the frontier by accumulated cost plus an estimated remaining cost."
-  },
-  "heuristic": {
-    "id": "travel_time",
-    "label": "Optimistic travel-time lower bound",
-    "description": "Uses straight-line distance at the graph's maximum free-flow speed.",
-    "admissible": true,
-    "consistent": true,
-    "warning": null,
-    "used": true
-  },
-  "path": ["osm_420248644", "...", "hospital_way_372433638"],
-  "edge_ids": ["..."],
-  "route_geojson": {
-    "type": "LineString",
-    "coordinates": [[108.216, 16.07], [108.215515, 16.0726877]]
-  },
-  "metrics": {
-    "runtime_ms": 2.4,
-    "visited_nodes": 26,
-    "expanded_nodes": 26,
-    "generated_nodes": 42,
-    "frontier_peak": 18,
-    "heuristic_calls": 42,
-    "path_nodes": 9,
-    "path_edges": 8,
-    "hop_count": 8,
-    "path_cost": 2.02075749,
-    "trace_truncated": false,
-    "distance_m": 1548.73,
-    "free_flow_time_s": 120.395383,
-    "travel_time_s": 173.499983,
-    "traffic_delay_s": 53.1046,
-    "risk_exposure": 0.214529
-  }
+  "type": "LineString",
+  "coordinates": [[106.6861395, 10.7672833], [106.6979498, 10.7725474]]
 }
 ```
 
-Coordinate list above is shortened and not a valid representation of the full actual route geometry; the actual endpoint returns the complete LineString.
+### 7.3 Trace
 
-### 7.3 Cost breakdown
-
-```json
-{
-  "weights": {
-    "distance": 0.25,
-    "travel_time": 0.5,
-    "traffic_delay": 0.2,
-    "risk": 0.05
-  },
-  "units": {
-    "distance": "kilometres before weighting",
-    "travel_time": "minutes before weighting",
-    "traffic_delay": "minutes before weighting",
-    "risk": "risk fraction × kilometres before weighting",
-    "total_cost": "dimensionless weighted score"
-  },
-  "edge_count": 8,
-  "distance_m": 1548.73,
-  "free_flow_time_s": 120.395383,
-  "travel_time_s": 173.499983,
-  "traffic_delay_s": 53.1046,
-  "risk_exposure": 0.214529,
-  "components": {
-    "distance": 0.3871825,
-    "travel_time": 1.445833192,
-    "traffic_delay": 0.177015333,
-    "risk": 0.010726465
-  },
-  "total_cost": 2.02075749
-}
-```
-
-These component values correspond to the documented sample route. The invariant is `sum(components.values()) == total_cost` within serialized rounding.
-
-### 7.4 Trace
+Trace envelope:
 
 ```json
 {
   "schema_version": "1.0",
-  "event_count": 3,
+  "event_count": 42,
   "truncated": false,
-  "events": [
-    {
-      "step": 0,
-      "event": "start",
-      "node_id": "osm_420248644",
-      "parent_id": null,
-      "edge_id": null,
-      "direction": "forward",
-      "frontier_size": 1,
-      "explored_count": 0,
-      "g_cost": 0.0,
-      "h_cost": 1.1,
-      "f_cost": 1.1,
-      "depth": null,
-      "message": ""
-    }
-  ]
+  "events": []
 }
 ```
 
-Events can be `start`, `iteration`, `expand`, `discover`, `relax`, `prune`, `finish`. The example `event_count` and heuristic numbers are schematic. Bidirectional search uses `direction="backward"` for its reverse wave.
-
-### 7.5 Explanation
-
-```json
-{
-  "summary": "A* Search found an 8-edge route with weighted cost 2.020757.",
-  "optimality": "Optimal with an admissible, consistent heuristic.",
-  "heuristic_note": "Optimistic travel-time lower bound: ...",
-  "traffic_note": "Higher delay on primary and arterial approaches to the city centre.",
-  "cost_model": "total = ...; weights are normalized",
-  "warnings": ["<dataset disclaimer>"]
-}
-```
-
-For an unreachable/limited run, `path=[]`, `edge_ids=[]`, `route_geojson=null`, aggregate metrics/cost are zero except search effort, and summary explains the status.
-
-### 7.6 Alternative
-
-When enabled and available:
+Mỗi event luôn có:
 
 ```text
-algorithm, reason, path, edge_ids, route_geojson,
-difference_percent, metrics, cost_breakdown
+step, event, node_id, parent_id, edge_id, direction,
+frontier_size, explored_count, g_cost, h_cost, f_cost,
+depth, message
 ```
 
-It is generated by running Dijkstra once per unique primary edge while blocking that edge, then keeping the cheapest different candidate. It may be `null`. `difference_percent` is relative to the primary route cost and can be negative when the requested primary algorithm itself is non-optimal.
+Event family: `start`, `iteration`, `expand`, `discover`, `relax`, `prune`, `finish`. Bidirectional Dijkstra dùng `direction=forward|backward`; thuật toán khác dùng `forward`. `max_trace_events` chỉ giới hạn dữ liệu lưu/transfer, còn search vẫn tiếp tục đến goal hoặc expansion limit.
+
+### 7.4 Explanation and alternative
+
+`explanation` gồm `summary`, `optimality`, `heuristic_note`, `traffic_note`, `cost_model`, `warnings`. Claim tối ưu phải đọc cùng algorithm, heuristic, scenario, weights và expansion limit.
+
+`alternative` nếu có là candidate tốt nhất tìm được khi lần lượt loại một edge của primary route rồi chạy Dijkstra. Nó **không** phải chứng minh “second-shortest path” trên toàn không gian route.
 
 ## 8. `POST /compare`
 
-### 8.1 Request
+Request nhận 2–8 algorithm duy nhất:
 
 ```json
 {
-  "start_id": "osm_420248644",
-  "goal_id": "hospital_way_372433638",
+  "start_id": "poi_way_152994798",
+  "goal_id": "poi_way_39514795",
   "algorithms": ["bfs", "ucs", "astar", "greedy_best_first"],
   "heuristic": "travel_time",
   "scenario": "morning_rush",
@@ -528,62 +421,14 @@ It is generated by running Dijkstra once per unique primary edge while blocking 
 }
 ```
 
-Constraints:
-
-- 2–8 unique algorithm enums;
-- compare trace limit `0..2,000`, default 300;
-- default `include_trace=false`;
-- other fields follow search bounds.
-
-There is no `include_alternative`: each nested run sets `alternative=null` to avoid multiplying work.
-
-### 8.2 Response
+Response:
 
 ```text
-request_id
-start_id
-goal_id
-scenario
-runs[]
-ranking[]
-best_algorithm
-agreement
+request_id, start_id, goal_id, scenario,
+runs[], ranking[], best_algorithm, agreement
 ```
 
-Each `runs[]` item is a full SearchResponse without an alternative. Ranking order is:
-
-1. found before not found;
-2. lower `path_cost`;
-3. fewer `expanded_nodes`;
-4. lexical algorithm ID.
-
-`runtime_ms` is displayed but not a ranking tie-breaker.
-
-```json
-{
-  "ranking": [
-    {
-      "rank": 1,
-      "algorithm": "astar",
-      "found": true,
-      "path_cost": 2.02075749,
-      "expanded_nodes": 26,
-      "runtime_ms": 2.4
-    }
-  ],
-  "best_algorithm": "astar",
-  "agreement": {
-    "all_found": true,
-    "same_path": false,
-    "unique_path_count": 2,
-    "path_groups": [
-      {"edge_ids": ["..."], "algorithms": ["ucs", "astar"]}
-    ]
-  }
-}
-```
-
-The numbers/groups above are abridged examples. Agreement compares exact ordered `edge_ids`, not only equal cost.
+`ranking` sắp found trước, sau đó weighted path cost, expanded nodes và ID. `best_algorithm` vì vậy nghĩa là best theo ranking này, không phải thuật toán nhanh nhất một cách tổng quát. `agreement` nhóm các run theo ordered `edge_ids`.
 
 ## 9. `POST /multi-route`
 
@@ -591,12 +436,12 @@ The numbers/groups above are abridged examples. Agreement compares exact ordered
 
 ```json
 {
-  "start_id": "osm_345351408",
+  "start_id": "poi_way_152994798",
   "stop_ids": [
-    "hospital_way_372433638",
-    "hospital_way_372433951",
-    "hospital_node_729405662",
-    "hospital_way_489789425"
+    "poi_way_39514795",
+    "poi_way_39598471",
+    "poi_way_750511344",
+    "poi_way_152993734"
   ],
   "method": "held_karp",
   "return_to_start": true,
@@ -608,102 +453,50 @@ The numbers/groups above are abridged examples. Agreement compares exact ordered
     "risk": 0.05
   },
   "seed": 42,
-  "max_iterations": 2000,
+  "max_iterations": 1000,
   "max_expansions": 100000
 }
 ```
 
-| Field | Default / bounds |
-|---|---|
-| `start_id` | required, existing |
-| `stop_ids` | 1–12 unique non-empty existing IDs; cannot contain start |
-| `method` | `nearest_neighbor` |
-| `return_to_start` | false |
-| `scenario` | `normal` |
-| `cost_weights` | defaults |
-| `seed` | 42; `0..2,147,483,647` |
-| `max_iterations` | 1,000; `1..100,000` |
-| `max_expansions` | 100,000; `1..1,000,000` per pair search |
-
-Held–Karp accepts at most 10 stops. `seed` affects simulated annealing only. `max_iterations` bounds 2-opt/annealing optimizer work, not pairwise Dijkstra.
-
-The HTTP API does **not** accept `segment_algorithm`, `heuristic`, `objective` or `vehicle`. Pairwise segments are intentionally fixed to exact Dijkstra/zero heuristic; UI objectives are converted to `cost_weights` client-side.
+Request hỗ trợ 1–12 stop; `held_karp` giới hạn 10. Stop phải duy nhất và khác start.
 
 ### 9.2 Response
 
 ```text
-request_id, status,
-method, scenario,
+request_id, status, method, scenario,
 start_id, requested_stop_ids, stop_order,
 return_to_start, visit_sequence,
 path, edge_ids, route_geojson,
 segments[], metrics, cost_breakdown, explanation
 ```
 
-Segment:
+Mỗi segment có `from_id`, `to_id`, `path`, `edge_ids`, `route_geojson`, `cost_breakdown`. Mọi pairwise leg dùng exact Dijkstra trên directed graph hiện tại.
 
-```json
-{
-  "from_id": "osm_345351408",
-  "to_id": "hospital_way_489789425",
-  "path": ["..."],
-  "edge_ids": ["..."],
-  "route_geojson": {"type": "LineString", "coordinates": [[108.2, 16.05], [108.21, 16.06]]},
-  "cost_breakdown": {"...": "..."}
-}
-```
+Held–Karp “exact” chỉ có nghĩa thứ tự có tổng nhỏ nhất trên ma trận pairwise đã tính cho snapshot/scenario/weights và stop set đó. Nearest Neighbor, 2-opt và Simulated Annealing là approximate; seed làm SA tái lập được nhưng không làm nó thành exact.
 
-Metrics:
+## 10. Dataset connectivity relevant to clients
 
-```json
-{
-  "runtime_ms": 20.7812,
-  "pairwise_searches": 20,
-  "pairwise_expanded_nodes": 5101,
-  "optimizer_iterations": 48,
-  "optimizer_improvements": 0,
-  "stop_count": 4,
-  "hop_count": 89,
-  "path_cost": 28.523431994,
-  "distance_m": 20161.92,
-  "travel_time_s": 2503.720484,
-  "traffic_delay_s": 746.173373
-}
-```
+Snapshot bundled có:
 
-These values are from one documented sample run; `runtime_ms` should be read from a fresh response before quoting because it varies by machine/run. For `n` stops, successful construction makes `n(n+1)` pairwise searches because ordered directions are distinct.
+- 1.103 node, 2.279 cung có hướng;
+- 187 delivery POI;
+- 85 strongly connected component;
+- largest/primary SCC có 992 node và chứa 172 delivery POI.
 
-`method.exact=true` only for Held–Karp. Approximate method explanation says that stop ordering is approximate while each selected segment is an exact Dijkstra path.
+Do graph có hướng và không phải mọi POI thuộc cùng SCC, khoảng cách địa lý gần không bảo đảm route hai chiều. UI/API phải xử lý `unreachable` hoặc `multi_route_unreachable`, không tự nối thẳng hai node để che lỗi topology.
 
-## 10. Frontend adapter notes
+## 11. Contract checks
 
-The backend contract deliberately uses mathematically explicit names; `frontend/src/api.ts` adapts them:
+- Unknown field bị 422; API không im lặng bỏ field.
+- React client dùng `compact=true`; bản compact không duplicate geometry trong attributes/GeoJSON. Endpoint giữ `compact=false` làm mặc định để tương thích API.
+- `include_geojson=true` trả đúng 2.279 feature cho snapshot bundled.
+- Closed hoặc `traversable=false` edge không được dùng trong path.
+- Start bằng goal trả path một node, zero edge và cost 0.
+- Safe A* heuristic cho cùng optimum với UCS/Dijkstra khi không chạm limit.
+- `traffic_aware` gỡ bỏ optimality guarantee của A*/IDA*.
+- `limit_reached` không được trình bày là `unreachable`.
+- Multi-route segments ghép đúng visit sequence và tổng component bằng total cost.
 
-| Backend | React view model |
-|---|---|
-| `directed_edges` | `edges` |
-| `road_name`, `road_class` | `name`, `road_type` |
-| `traffic.travel_time_s` | `travel_time_min` |
-| `cost_weights.travel_time` | `weights.time` |
-| `cost_weights.traffic_delay` | `weights.congestion` |
-| `algorithm.id` | `algorithm` string |
-| `trace.events` | reconstructed `TraceStep[]` with frontier/visited sets |
-| raw LineString | GeoJSON Feature wrapper used by UI |
+## 12. Safety boundary
 
-API consumers outside this frontend should use the OpenAPI schema directly and should not assume the adapter's renamed fields.
-
-## 11. Contract invariants worth testing
-
-```text
-len(edge_ids) == max(0, len(path)-1)
-route_geojson.type == "LineString" when found
-cost_breakdown.total_cost == metrics.path_cost
-sum(cost_breakdown.weights.values()) == 1
-sum(cost_breakdown.components.values()) == cost_breakdown.total_cost
-len(graph_geojson.features) == len(directed_edges)
-sorted(stop_order) == sorted(requested_stop_ids)
-visit_sequence starts at start_id
-visit_sequence ends at start_id iff return_to_start is true
-```
-
-Floating values are serialized with documented rounding in aggregate fields; use a numeric tolerance for recomputation from raw edge values.
+API chứng minh hành vi thuật toán trên một graph giáo dục. OSM snapshot có thể cũ/thiếu; synthetic overlays không phải traffic live; `traversable` không mã hóa đầy đủ luật giao thông hay quyền đi của shipper. Không dùng output như turn-by-turn navigation, quyết định giao vận production, hoặc bằng chứng rằng một tuyến hợp pháp/an toàn cho xe máy.

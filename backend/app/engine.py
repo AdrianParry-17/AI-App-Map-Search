@@ -47,9 +47,9 @@ class RoutingEngine:
     def metadata_payload(self) -> dict[str, Any]:
         return {
             "api": {
-                "name": "Da Nang Emergency Route Lab API",
-                "version": "1.0.0",
-                "contract_version": "2026-08-05",
+                "name": "HCMC Delivery Route Lab API",
+                "version": "2.0.0",
+                "contract_version": "2026-08-09",
             },
             "dataset": asdict(self.dataset),
             "graph": self._graph_summary(),
@@ -94,27 +94,57 @@ class RoutingEngine:
             },
         }
 
-    def graph_payload(self, scenario: str) -> dict[str, Any]:
+    def graph_payload(
+        self,
+        scenario: str,
+        *,
+        include_geojson: bool = False,
+        compact: bool = False,
+    ) -> dict[str, Any]:
         try:
             TrafficModel.validate_scenario(scenario)
         except ValueError as exc:
             raise RoutingError("invalid_scenario", str(exc)) from exc
-        nodes = [
-            {
-                "id": node.id,
-                "name": node.name,
-                "kind": node.kind,
-                "lat": node.lat,
-                "lon": node.lon,
-                "attributes": dict(node.attributes),
-            }
-            for node in self.graph.nodes.values()
-        ]
+        compact_node_keys = {
+            "delivery_destination", "delivery_category", "routing_component",
+            "district", "address", "osm_type", "osm_id",
+        }
+        nodes = []
+        for node in self.graph.nodes.values():
+            node_attributes = dict(node.attributes)
+            if compact:
+                node_attributes = {
+                    key: value for key, value in node_attributes.items() if key in compact_node_keys
+                }
+            nodes.append(
+                {
+                    "id": node.id,
+                    "name": node.name,
+                    "kind": node.kind,
+                    "lat": node.lat,
+                    "lon": node.lon,
+                    "attributes": node_attributes,
+                }
+            )
         edges: list[dict[str, Any]] = []
         graph_features: list[dict[str, Any]] = []
         for edge in self.graph.edges.values():
             status = self.traffic.status(edge, scenario)
             geometry = self.graph.edge_coordinates(edge.id)
+            public_attributes = {
+                key: value for key, value in edge.attributes.items() if key != "geometry"
+            }
+            if compact:
+                compact_edge_keys = {
+                    "source_direction", "base_congestion", "bridge", "flood_prone",
+                    "incident_prone", "close_during_incident", "synthetic_access_connector",
+                }
+                public_attributes = {
+                    key: value for key, value in public_attributes.items() if key in compact_edge_keys
+                }
+            source_direction = str(edge.attributes.get("source_direction", "directed"))
+            if source_direction not in {"one-way", "two-way"}:
+                source_direction = "directed"
             edges.append(
                 {
                 "id": edge.id,
@@ -125,13 +155,17 @@ class RoutingEngine:
                 "road_name": edge.road_name,
                 "road_class": edge.road_class,
                 "risk": edge.risk,
-                "emergency_access": edge.emergency_access,
-                "attributes": dict(edge.attributes),
+                "traversable": edge.traversable,
+                "direction": source_direction,
+                # Geometry has a dedicated field below. Omitting it here avoids
+                # making the browser parse a second identical coordinate array.
+                "attributes": public_attributes,
                 "geometry": geometry,
                 "traffic": status.as_dict(),
             }
             )
-            graph_features.append(
+            if include_geojson:
+                graph_features.append(
                 {
                     "type": "Feature",
                     "id": edge.id,
@@ -149,7 +183,7 @@ class RoutingEngine:
                     },
                     "geometry": {"type": "LineString", "coordinates": geometry},
                 }
-            )
+                )
         return {
             "dataset": asdict(self.dataset),
             "summary": self._graph_summary(),
@@ -157,6 +191,29 @@ class RoutingEngine:
             "nodes": nodes,
             "directed_edges": edges,
             "graph_geojson": {"type": "FeatureCollection", "features": graph_features},
+        }
+
+    def traffic_payload(self, scenario: str) -> dict[str, Any]:
+        """Return only mutable scenario fields, without repeating graph topology."""
+
+        try:
+            TrafficModel.validate_scenario(scenario)
+        except ValueError as exc:
+            raise RoutingError("invalid_scenario", str(exc)) from exc
+        return {
+            "scenario": asdict(SCENARIOS[scenario]),
+            "edges": [
+                {
+                    "edge_id": status.edge_id,
+                    "multiplier": status.multiplier,
+                    "effective_speed_kph": status.effective_speed_kph,
+                    "travel_time_s": status.travel_time_s,
+                    "congestion": status.congestion,
+                    "closed": status.closed,
+                }
+                for edge in self.graph.edges.values()
+                for status in [self.traffic.status(edge, scenario)]
+            ],
         }
 
     def search(

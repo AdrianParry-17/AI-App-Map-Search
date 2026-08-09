@@ -48,7 +48,7 @@ class DirectedEdge:
     road_name: str
     road_class: str = "local"
     risk: float = 0.1
-    emergency_access: bool = True
+    traversable: bool = True
     attributes: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:

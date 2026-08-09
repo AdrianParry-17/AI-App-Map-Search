@@ -1,4 +1,4 @@
-"""Weighted ambulance-route cost model and transparent cost breakdowns."""
+"""Weighted delivery-route cost model and transparent cost breakdowns."""
 
 from __future__ import annotations
 
@@ -111,7 +111,7 @@ class CostCalculator:
         return inf if breakdown is None else breakdown.total_cost
 
     def is_traversable(self, edge: DirectedEdge) -> bool:
-        return edge.emergency_access and self.edge_breakdown(edge) is not None
+        return edge.traversable and self.edge_breakdown(edge) is not None
 
     def aggregate(self, edge_ids: Iterable[str]) -> dict[str, Any]:
         totals = {

@@ -28,6 +28,7 @@ from .schemas import (
     ScenarioName,
     SearchRequest,
     SearchResponse,
+    TrafficOverlayResponse,
 )
 
 
@@ -57,8 +58,8 @@ def create_app(dataset_path: str | Path | None = None) -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         description=(
-            "Educational classical-search API for a central Da Nang ambulance-routing scenario. "
-            "The bundled graph and traffic overlays are not suitable for real dispatch."
+            "Educational classical-search API for courier and multi-stop delivery routes in "
+            "central Ho Chi Minh City. The snapshot and scenario overlays are not live navigation data."
         ),
         openapi_url=f"{settings.api_prefix}/openapi.json",
         docs_url="/docs",
@@ -149,9 +150,32 @@ def create_app(dataset_path: str | Path | None = None) -> FastAPI:
     )
     def graph(
         scenario: Annotated[ScenarioName, Query(description="Deterministic traffic overlay")] = ScenarioName.NORMAL,
+        include_geojson: Annotated[
+            bool,
+            Query(description="Include a duplicate GeoJSON FeatureCollection for GIS clients"),
+        ] = False,
+        compact: Annotated[
+            bool,
+            Query(description="Return only attributes required by the interactive map"),
+        ] = False,
         engine: RoutingEngine = Depends(engine_from_request),
     ) -> dict[str, Any]:
-        return engine.graph_payload(scenario.value)
+        return engine.graph_payload(
+            scenario.value,
+            include_geojson=include_geojson,
+            compact=compact,
+        )
+
+    @application.get(
+        f"{settings.api_prefix}/traffic",
+        response_model=TrafficOverlayResponse,
+        tags=["graph"],
+    )
+    def traffic(
+        scenario: Annotated[ScenarioName, Query(description="Deterministic traffic overlay")],
+        engine: RoutingEngine = Depends(engine_from_request),
+    ) -> dict[str, Any]:
+        return engine.traffic_payload(scenario.value)
 
     @application.post(
         f"{settings.api_prefix}/search",

@@ -1,279 +1,283 @@
-# Lab 1 Rubric & Submission Checklist
+# Lab 1 Rubric & Submission Checklist — HCMC Delivery Route Lab
 
-Use this as a release gate. “Evidence present” means a source artifact exists; it does **not** mean the final PDF, screenshots, slides, video or ZIP have already been produced.
+Dùng file này làm release gate. “Có evidence” nghĩa code/tài liệu đã tồn tại; không đồng nghĩa final PDF, slide, ảnh hoặc video đã được tạo.
 
-Status legend:
+Status:
 
-- ✅ implementation/document evidence present;
-- 🧪 must rerun/record evidence on the final commit;
-- 🧑 human/group artifact or decision still required;
-- ⚠️ claim must include a limitation/condition.
+- ✅ implementation/document evidence có sẵn;
+- 🧪 phải chạy/chụp lại trên final commit;
+- 🧑 cần nhóm hoàn thiện thủ công;
+- ⚠️ claim phải kèm điều kiện/giới hạn.
 
-## 1. Evaluation criteria (100 points)
+## 1. Evaluation matrix
 
-| Criterion | Pts | Current evidence | Final verification / remaining work | Status |
+| Criterion | Pts | Evidence hiện tại | Final gate | Status |
 |---|---:|---|---|---|
-| Vietnamese traffic context and realistic scenario | 10 | Đà Nẵng ambulance scenario in UI, API description and `TECHNICAL_REPORT.md` | Capture a real UI run and explain why ETA/congestion matter | ✅ 🧪 |
-| Graph modeling, dataset and cost function | 15 | 512 nodes, 1,007 directed runtime edges; OSM snapshot + synthetic overlays; normalized 4-part cost; `DATASET.md` | Record checksum; show topology vs synthetic provenance in report/presentation | ✅ 🧪 |
-| Required BFS, DFS, UCS, A* | 20 | Implemented in `backend/app/algorithms.py`; unified contract and tests | Run pytest on final commit; demo expansion/frontier/cost behavior | ✅ 🧪 |
-| At least two additional algorithms | 10 | Dijkstra, Greedy Best-First, Bidirectional Dijkstra, IDA* (4 extras) | Explain conditions/limits; do not report Greedy/IDA* guarantees incorrectly | ✅ ⚠️ |
-| Multi-location optimization | 10 | Nearest Neighbor, 2-opt, exact Held–Karp, seeded SA + 2-opt | Demo original/requested vs optimized order; show exact vs approximate | ✅ 🧪 |
-| GUI and visual search process | 10 | React/Vite, Leaflet, selectable map, trace playback, metrics, Compare, Learn | Run frontend build; capture screenshots and video from actual app | ✅ 🧪 🧑 |
-| Route explanation and alternative comparison | 10 | Explanation object, cost breakdown, optimality warnings, deterministic single-edge-exclusion alternative | Demo one primary/alternative; state alternative algorithm's exact scope | ✅ 🧪 ⚠️ |
-| Technical report quality | 10 | Source report + data/algorithm/API/rubric docs | Fill group data, add actual screenshots/test output, proofread, export PDF | ✅ 🧑 |
-| Demo video quality | 5 | Script and shot plan only | Record, edit, upload, verify link permissions/audio/readability | 🧑 |
+| Bối cảnh giao thông Việt Nam | 10 | courier/delivery ở trung tâm TP.HCM; scenario congestion/rain/disruption | demo một thay đổi scenario làm đổi ETA hoặc route | ✅ 🧪 |
+| Graph, dataset, cost | 15 | 1.103 node, 2.279 directed arc, 187 POI; cost bốn thành phần | verify checksum/provenance và giải thích topology vs overlay | ✅ 🧪 |
+| BFS, DFS, UCS, A* | 20 | cùng normalized result/trace contract | chạy backend tests và demo frontier khác nhau | ✅ 🧪 |
+| Ít nhất hai thuật toán bổ sung | 10 | Dijkstra, Greedy, Bidirectional Dijkstra, IDA* | trình bày guarantee/limit đúng | ✅ ⚠️ |
+| Nhiều delivery location | 10 | NN, Held–Karp, 2-opt, seeded SA; pairwise Dijkstra | demo requested order, optimized order, segments | ✅ 🧪 |
+| GUI và visual search | 10 | React/Leaflet trace tree, playback, metrics, Compare, Learn | desktop+narrow viewport, console sạch | ✅ 🧪 |
+| Explanation/alternative | 10 | cost breakdown, optimality note, bounded alternative | kể tên một khác biệt route và giới hạn alternative | ✅ ⚠️ |
+| Báo cáo kỹ thuật | 10 | report/API/dataset/algorithm docs | điền nhóm, ảnh final, test output, export PDF | ✅ 🧑 |
+| Video | 5 | script/shot plan | quay, edit, kiểm tra link/audio/readability | 🧑 |
 
-## 2. Requirement-by-requirement traceability
+## 2. Requirement traceability
 
-### 2.1 General submission requirements
+### 2.1 Submission package
 
-- [ ] Group has 3–5 students.
-- [ ] One representative is named.
-- [ ] ZIP is named exactly `[[GroupID]].zip`.
-- [ ] ZIP contains `[[GroupID - SC]].txt` with an accessible source-code link.
-- [ ] ZIP contains `[[GroupID - Report]].pdf`.
-- [ ] ZIP contains `[[GroupID - Slide]].pptx` or `.pdf`.
-- [ ] ZIP contains `[[GroupID - Video]].txt` with an accessible demo-video link.
-- [ ] ZIP contains `[[GroupID - Data]].zip` or `.txt` with dataset/data description.
-- [ ] Links are tested in a private/incognito browser not signed in as an owner.
-- [ ] ZIP is extracted and opened once on a clean path before upload.
+- [ ] Nhóm có đúng số thành viên theo đề chính thức.
+- [ ] Chỉ định một đại diện.
+- [ ] ZIP dùng đúng tên mà giảng viên yêu cầu.
+- [ ] Có source-code link, report PDF, slide, video link và data/data-description.
+- [ ] Mọi link mở được trong cửa sổ private không đăng nhập owner.
+- [ ] Extract ZIP trên một đường dẫn sạch và chạy thử trước khi nộp.
+- [ ] Không đóng gói secret, `.env`, virtualenv, `node_modules`, cache hoặc `backend/data-tmp`.
 
-### 2.2 Scenario and modeling
+### 2.2 Problem framing
 
-- [x] Vietnamese urban context: central Đà Nẵng.
-- [x] Realistic problem: ambulance route to a medical destination.
-- [x] Directed graph; outgoing and incoming indexes.
-- [x] Nodes represent intersections/gateways/bridge access/hospital POIs.
-- [x] Edges represent contracted road segments.
-- [x] Distance, ETA, congestion state, road type and direction are available.
-- [x] Optional risk factors include synthetic flood/incident/bridge effects.
-- [x] Two-location search.
-- [x] Multi-location order + route.
-- [ ] In final report, include one formal state/goal/transition definition and graph diagram.
+- [x] Thành phố Hồ Chí Minh, không phải city cũ.
+- [x] Bài toán shipper/courier: điểm lấy hàng/điểm đi → điểm giao.
+- [x] Multi-stop là nhiều delivery location.
+- [x] FastAPI + React là thay đổi stack có chủ đích so với Streamlit proposal.
+- [x] UI/API/docs không dựa trên semantics y tế hoặc xe chuyên dụng.
+- [x] Disclaimer nói rõ educational, không phải navigation live.
+- [x] Không claim `traversable` đồng nghĩa hợp pháp cho xe máy.
+- [ ] Final report có formal state, goal, transition và một graph minh họa do nhóm tự vẽ.
 
-### 2.3 Cost function
+### 2.3 Graph and edge contract
 
-- [x] Uses distance + travel time + traffic delay/congestion + risk exposure.
-- [x] User controls weight ratios; backend normalizes weights.
-- [x] All cost components are non-negative for route algorithms.
-- [x] Closed edges are removed rather than assigned a finite penalty.
-- [x] Breakdown reports units/components/total.
-- [ ] Final presentation verbally distinguishes “congestion label 1–5 for UI” from numeric delay used in cost.
-- [ ] Show at least one scenario or weight change that alters route or ETA.
+- [x] Directed graph với outgoing/incoming indexes.
+- [x] Node là intersection/gateway/bridge access hoặc delivery POI.
+- [x] Edge có start/end, distance, time/speed, congestion, risk và direction.
+- [x] Canonical records đã là directed arc; không double-expand source `two-way` rows.
+- [x] Source `two-way` arc được importer xác nhận có reverse record.
+- [x] `traversable` thay cho access field gắn domain cũ.
+- [x] Closed hoặc non-traversable edge bị loại khỏi transitions.
+- [x] Geometry có GeoJSON coordinate order và được orient theo source→target.
+- [ ] Demo một one-way constraint hoặc unreachable case có giải thích.
 
-### 2.4 Dataset minimum and provenance
+### 2.4 Cost and scenario
 
-- [x] ≥20 nodes: 512.
-- [x] ≥30 edges: 756 stored base records / 1,007 directed runtime edges.
-- [x] Real locations/topology from OSM snapshot.
-- [x] OSM timestamp, bounding/query metadata and IDs retained.
-- [x] Traffic/risk provenance explicitly synthetic deterministic.
-- [x] Dataset bundled as JSON and documented.
-- [x] Visible OSM attribution in map/footer.
-- [x] Record SHA-256 of submission snapshot in `DATASET.md` (`39FF8A…5FC10`).
-- [ ] Keep attribution and ODbL link visible in exported report/slides/video where map/data appear.
+- [x] Distance + travel time + traffic delay/congestion + risk exposure.
+- [x] Weight không âm, tổng dương và được normalize.
+- [x] UI có Shortest distance, Fastest ETA, Balanced preset.
+- [x] Normal, morning/evening rush, heavy rain và road disruption.
+- [x] Snapshot baseline congestion được đưa vào deterministic multiplier.
+- [x] Request-time overlay không random.
+- [ ] Presentation phân biệt source congestion score `1–5`, multiplier và weighted cost component.
+- [ ] Show ít nhất một scenario/weight làm thay đổi route hoặc ETA.
 
-### 2.5 Required and additional route algorithms
+### 2.5 Dataset and provenance
+
+- [x] ≥20 node: **1.103**.
+- [x] ≥30 directed edge: **2.279**.
+- [x] **187** delivery POI.
+- [x] **85** SCC; primary SCC **992** node.
+- [x] **172/187** delivery POI thuộc primary SCC.
+- [x] **1.039** source one-way arc và **1.240** two-way-derived arc.
+- [x] OSM base timestamp, query bbox, source hashes và IDs được giữ.
+- [x] Runtime đọc `backend/data/hcmc_delivery_osm_snapshot.json`.
+- [x] `backend/data-tmp/` chỉ là ignored import workspace.
+- [x] Reproducible fail-fast importer ở `scripts/import_hcmc_snapshot.py`.
+- [x] OSM attribution/ODbL được giữ trên UI/docs.
+- [x] Canonical SHA-256: `9D803A77A88418A5512F3098D859FD28CBA6539AE92E12D9394EE2E39C8D2A37`.
+- [ ] Rerun importer và hash check trên final commit.
+
+### 2.6 Pair-search algorithms
 
 - [x] BFS.
 - [x] DFS.
 - [x] UCS.
 - [x] A*.
-- [x] Dijkstra (additional).
-- [x] Greedy Best-First (additional).
-- [x] Bidirectional Dijkstra (additional).
-- [x] IDA* (additional).
-- [x] Same result/trace contract.
-- [x] Completeness and optimality metadata.
-- [ ] Final report includes actual final-commit comparison results, not only complexity theory.
-- [ ] Video demonstrates at least BFS vs a weighted optimum and A* `g/h/f`.
+- [x] Dijkstra.
+- [x] Greedy Best-First.
+- [x] Bidirectional Dijkstra dùng incoming graph ở backward wave.
+- [x] IDA*.
+- [x] Unified path/edge/metrics/trace output.
+- [x] `limit_reached` tách khỏi `unreachable`.
+- [ ] Final comparison dùng cùng start/goal/scenario/weights/expansion cap.
+- [ ] Video chỉ ra BFS minimum hops không đồng nghĩa minimum weighted cost.
 
-### 2.6 Heuristics
+### 2.7 Heuristics
 
 - [x] `zero` baseline.
 - [x] calibrated Haversine lower bound.
 - [x] optimistic travel-time lower bound.
-- [x] practical/non-admissible traffic-aware estimate.
-- [x] Metadata states admissible and consistent flags.
-- [x] Report/reference explains proof conditions.
-- [ ] Demo explicitly warns that `traffic_aware` removes A*/IDA* optimality guarantee.
+- [x] experimental `traffic_aware` estimate.
+- [x] Metadata công bố admissible/consistent.
+- [x] Snapshot calibration `s≈0.824833527`, `v_max=70 km/h` được tính lúc load.
+- [ ] Demo nói rõ `traffic_aware` gỡ optimality guarantee A*/IDA*.
 
-### 2.7 Multi-location
+### 2.8 Multi-location
 
-- [x] Efficient approximate baseline: Nearest Neighbor.
-- [x] Local improvement: 2-opt.
-- [x] Exact small-scale DP: Held–Karp, capped at 10 stops.
-- [x] Seeded metaheuristic: Simulated Annealing + 2-opt.
-- [x] Pairwise legs use directed exact Dijkstra.
+- [x] Nearest Neighbor baseline.
+- [x] NN + 2-opt local improvement.
+- [x] Held–Karp exact trên directed pairwise matrix, ≤10 stops.
+- [x] Seeded Simulated Annealing + 2-opt.
+- [x] Request tổng quát giới hạn 12 stop.
 - [x] Return-to-start option.
-- [x] Output includes requested order, optimized order, visit sequence, segments, cost and explanation.
-- [ ] Demo one approximate-vs-exact case and state that matching output does not prove the approximate method globally optimal.
+- [x] Response có requested order, optimized order, visit sequence và per-leg segments.
+- [x] UI giữ và render per-leg segments, distance, ETA và cost trong Route Intelligence.
+- [ ] Demo exact-vs-approximate và không suy rộng từ một case trùng optimum.
 
-### 2.8 GUI
+### 2.9 GUI and visualization
 
-- [x] Web-based React interface.
-- [x] Traffic graph/city map and OSM geometry.
-- [x] Select start, destination and intermediate stops by list or map.
-- [x] Select algorithm, objective/weights, scenario and heuristic.
-- [x] Search trace playback with current/frontier/visited reconstruction.
-- [x] Final route and alternative styling.
-- [x] Distance, ETA, total cost, expanded nodes, frontier peak and runtime cards.
-- [x] Comparison chart/table.
-- [x] Multi-stop mode.
-- [x] Learning/algorithm metadata view.
-- [x] Loading, backend health and error states.
-- [ ] Verify responsive layout at desktop and one narrow viewport on final build.
-- [ ] Verify map still conveys graph when `VITE_ENABLE_OSM_TILES=false`.
+- [x] React web UI localhost.
+- [x] HCMC graph/map, delivery category và OSM attribution.
+- [x] Chọn start, goal, stop bằng list/map.
+- [x] Algorithm, heuristic, objective weights và scenario controls.
+- [x] Current node, frontier links, explored tree và final route.
+- [x] Timeline play/pause/step/speed.
+- [x] Distance, ETA, cost, expanded, frontier peak, runtime.
+- [x] Cost breakdown, explanation, alternative.
+- [x] Compare, Multi-stop, Learn.
+- [x] Backend loading/error states.
+- [x] Không còn user-facing debug text.
+- [x] Không còn branding/icon/label của domain cũ.
+- [x] Test interaction responsiveness trên full 1.103/2.279 graph.
+- [x] Desktop và viewport khoảng 430 px không overflow.
+- [ ] OSM tiles disabled vẫn thấy graph/route.
 
-### 2.9 Route explanation
+### 2.10 Compact graph API
 
-- [x] Why the route was selected: weighted cost and algorithm metadata.
-- [x] Shortest/fastest/weighted-optimal condition is represented via objective weights and optimality text.
-- [x] Traffic scenario description and breakdown.
-- [x] High-congestion/closed edge visualization on map.
-- [x] Different route candidate through single-edge-exclusion Dijkstra.
-- [x] Alternative difference percentage.
-- [x] Warnings for non-optimal algorithms/non-admissible heuristic/trace truncation/data disclaimer.
-- [ ] In report/video, narrate one named segment difference rather than reading only totals.
+- [x] `/graph` default `include_geojson=false`.
+- [x] Default vẫn giữ `directed_edges[].geometry`.
+- [x] Duplicate `attributes.geometry` không đi qua response.
+- [x] Default `graph_geojson.features` rỗng, giữ stable shape.
+- [x] `include_geojson=true` dành cho GIS client và trả 2.279 feature.
+- [x] `compact=true` giữ nguyên topology/geometry và lọc attribute không dùng trên map.
+- [x] `/traffic` đổi scenario mà không lặp nodes/geometry.
+- [x] Regression test payload compact/full có cùng topology/edge geometry semantics.
 
-## 3. Technical report section gate
+## 3. Report and evidence gate
 
-The lab requires sections a–j. `TECHNICAL_REPORT.md` covers the technical source, but the group must complete the human artifacts.
-
-| Required report section | Evidence/section | Gate |
+| Required section | Evidence | Final action |
 |---|---|---|
-| a. Group introduction | Report §A | Fill names, IDs, contributions, completion |
-| b. Problem context | Report §2 | Add group-specific motivation if desired |
-| c. Problem modeling | Report §3 | Ready; verify formula rendering after PDF export |
-| d. Dataset | Report §4 + `DATASET.md` | Add checksum and optional appendix/sample records |
-| e. Algorithm principles | Report §5–7 + `ALGORITHM_REFERENCE.md` | Select appropriate depth for page limit |
-| f. Program flow | Report §8 Mermaid diagrams | Export diagrams correctly into PDF |
-| g. Algorithm comparison | Report §10 | Rerun on final commit and record environment/repetitions |
-| h. Multi-location | Report §7/§10.3 | Capture requested vs optimized order screenshot |
-| i. Instructions/screenshots | Report §11 + `assets/` | Dashboard, A* result và Compare là ảnh chạy thật; cần bổ sung Multi/Incident/Learn khi chốt PDF |
-| j. Limitations/future work | Report §13–14 | Ready; retain safety caveats |
+| Group introduction | `TECHNICAL_REPORT.md` §A | điền tên/ID/contribution |
+| Problem context | §2 | giữ courier/delivery framing |
+| Problem model/cost | §3 | kiểm tra formula khi export |
+| Dataset | §4 + `DATASET.md` | giữ checksum/provenance/limitations |
+| Algorithms/heuristics | §5–6 + `ALGORITHM_REFERENCE.md` | không vượt claim guarantee |
+| Multi-location | §7/§10.3 | ảnh requested vs optimized order |
+| Architecture/flow | §8–9 | render diagram đúng |
+| Experiment | §10 | rerun trên final commit |
+| GUI instructions | §11 | ảnh HCMC thật, không dùng ảnh cũ |
+| Limitations/future | §13–14 | giữ vehicle/legal/live caveats |
 
-### Required screenshot capture list
+### Screenshot list
 
-- [x] Route mode before run, selections visible (`assets/dashboard-overview.png`).
-- [x] Route mode after run, full primary route and metrics visible (`assets/route-result.png`).
-- [x] Trace playback, legend và current step visible (`assets/route-result.png`).
-- [ ] Alternative route/card visible.
-- [x] Compare mode with ≥4 algorithms (`assets/algorithm-compare.png`).
-- [ ] Multi-stop requested and optimized order.
-- [ ] Incident or heavy-rain scenario.
-- [ ] Learn mode with heuristic admissibility.
-- [ ] Optional Swagger/OpenAPI endpoint proof.
+- [x] Route mode trước khi chạy; input/control rõ (`dashboard-overview.png`).
+- [x] A* result với HCMC map, metrics, explanation (`route-result.png`).
+- [x] Playback đang chạy với current/frontier/explored tree (`route-result.png`).
+- [x] Alternative route/card (`route-result.png`).
+- [x] Compare ít nhất 4 algorithm (`algorithm-compare.png`).
+- [x] Multi-stop requested/optimized order và segments (`multi-stop.png`).
+- [x] Heavy Rain hoặc Road Disruption (`heavy-rain.png`).
+- [x] Learn view với admissibility (`algorithm-learn.png`).
+- [x] Optional Swagger graph compact parameter.
 
-For each image: include a figure number, caption, input IDs/names, algorithm, heuristic, scenario, commit and OSM attribution if a map is visible.
+Mỗi caption ghi input IDs/names, algorithm, heuristic, scenario, weights, commit và OSM attribution.
 
-## 4. Final automated verification
-
-Run from a clean final commit and paste concise results into the report appendix/release notes.
+## 4. Automated verification
 
 ```powershell
-cd backend
-python -m pytest
+powershell -ExecutionPolicy Bypass -File .\scripts\check.ps1
 ```
 
-```powershell
-cd frontend
-npm ci
-npm run lint
-npm run build
-```
+Ngoài suite, smoke test:
 
-Then run both servers and exercise:
+- [ ] `/health`: dataset v2.0.0, 1.103 node, 2.279 edge.
+- [ ] `/metadata`: 8 algorithm, 4 heuristic, 5 scenario, 4 multi method.
+- [x] `/graph` compact: 2.279 edge, zero GeoJSON features, không duplicate geometry.
+- [x] `/graph?include_geojson=true`: 2.279 GeoJSON features.
+- [ ] `incident`: 47 directed arc đóng trong snapshot hiện tại.
+- [ ] A* safe heuristic trả same optimum với Dijkstra trên controlled case.
+- [ ] IDA* limit case báo `limit_reached`, không báo unreachable.
+- [ ] Compare reject duplicate algorithm.
+- [ ] Held–Karp reject >10 stop.
+- [ ] Multi exact case trong primary SCC thành công.
+- [ ] Unknown node trả structured 422.
+- [ ] Start=goal trả zero cost.
+- [ ] Frontend backend-offline state không blank/crash.
+- [ ] Browser console không có uncaught error ở bốn mode.
 
-- [x] `GET /api/v1/health` returns expected dataset/version/count.
-- [x] `GET /api/v1/metadata` lists 8 algorithms, 4 heuristics and 4 multi methods.
-- [x] `/graph?scenario=incident` has at least one closed edge.
-- [x] A* safe-heuristic search finds a route and returns non-empty trace.
-- [x] BFS and weighted algorithm can produce different cost/route behavior.
-- [x] Compare accepts 2–8 unique algorithms.
-- [x] Held–Karp rejects >10 stops with a clear 422 envelope.
-- [x] Multi-stop exact case succeeds in the strongly connected core.
-- [x] Unknown node returns structured 422.
-- [x] Start=goal returns zero-cost route.
-- [ ] Frontend shows backend-offline error without blank/crash.
-- [ ] Browser console has no uncaught error on each mode.
-
-Record:
+Record sau khi chạy final:
 
 | Check | Final value |
 |---|---|
-| Commit | Workspace chưa được khởi tạo Git; điền SHA sau khi nhóm tạo repository |
-| Python / OS | Python 3.13.14 / Windows |
-| Node / npm | Node 24.11.0 / npm 11.6.1 |
-| Pytest | 28 passed; 89% statement coverage |
-| Frontend | Vitest 4 passed; Vite production build passed; Playwright Edge e2e 2 passed |
-| Dataset health counts | v1.0.0; 512 nodes; 1,007 directed edges; 24 hospitals; 552/552 hospital pairs reachable |
+| Commit | `[[SHA]]` |
+| Python / OS | `[[value]]` |
+| Node / npm | `[[value]]` |
+| Backend tests / coverage | `[[value]]` |
+| Frontend unit/build/E2E | `[[value]]` |
+| Dataset hash | `[[value]]` |
 
-## 5. Demo video gate
+## 5. Demo/video gate
 
-The prepared script is in `DEMO_VIDEO_SCRIPT.md`; no video is claimed to exist yet.
-
-- [ ] Original group-designed small graph example is shown.
-- [ ] Start, goal, expansion order and frontier are explained.
-- [ ] UCS/Dijkstra/A* `g`, and A*/Greedy `h`/`f`, are visible/explained.
-- [ ] Actual project route search is demonstrated.
-- [ ] Multi-location optimization is demonstrated.
-- [ ] At least two traffic conditions are compared.
-- [ ] Algorithm metrics are compared under identical input.
-- [ ] Primary-vs-alternative reasoning is narrated.
-- [ ] Exact vs approximate is stated accurately.
-- [ ] Synthetic traffic and safety disclaimer are spoken/visible.
-- [ ] OSM attribution is readable.
-- [ ] Audio is intelligible and cursor/text are visible at final resolution.
-- [ ] Upload link permission is verified externally.
+- [ ] Có mini graph tự thiết kế cho delivery, không sao chép tutorial.
+- [ ] Giải thích start, goal, frontier, expansion order.
+- [ ] Nói đúng `g`, `h`, `f` cho từng family.
+- [ ] Demo actual HCMC route.
+- [ ] Demo BFS vs weighted optimum.
+- [ ] Demo A* heuristic condition.
+- [ ] Demo scenario sensitivity.
+- [ ] Demo multi exact vs approximate.
+- [ ] Nói rõ synthetic overlays và snapshot timestamp.
+- [ ] Nói rõ không phải live/motorbike-legal navigation.
+- [ ] OSM attribution đọc được.
+- [ ] Audio/cursor/text rõ ở final resolution.
+- [ ] Link video mở được không cần quyền edit.
 
 ## 6. Presentation slide gate
 
-Suggested 10-slide deck:
+Suggested deck:
 
-1. team + contribution;
-2. ambulance scenario and objective;
-3. hybrid OSM/synthetic dataset provenance;
-4. directed graph and cost formula;
+1. team/contribution;
+2. HCMC courier delivery problem;
+3. hybrid OSM/synthetic dataset;
+4. directed graph + cost;
 5. required algorithms;
 6. extra algorithms + heuristic conditions;
-7. architecture/flow;
-8. measured comparison and scenario sensitivity;
+7. architecture + compact graph API;
+8. measured pair/scenario comparison;
 9. multi-stop exact vs approximate;
-10. limitations, attribution and conclusion.
+10. limitations, attribution, conclusion.
 
-- [ ] No slide says traffic is live.
-- [ ] No slide says BFS/DFS/Greedy are weighted optimal.
-- [ ] No slide says A* optimal without naming heuristic condition.
-- [ ] No slide calls 2-opt/SA globally optimal.
-- [ ] Runtime chart labels environment/sample count.
-- [ ] Map slides show © OpenStreetMap contributors / ODbL.
+- [ ] Không nói traffic là live.
+- [ ] Không nói `traversable` là legal access cho xe máy.
+- [ ] Không nói BFS/DFS/Greedy weighted-optimal.
+- [ ] Không nói A* optimal mà thiếu heuristic/limit condition.
+- [ ] Không nói IDA* `limit_reached` là unreachable.
+- [ ] Không nói Held–Karp giải global real-world delivery plan.
+- [ ] Runtime chart ghi environment và repetition protocol.
 
 ## 7. “Make no mistake” claim audit
 
-Before submission, search report/slides/captions/transcript for these risky words and qualify them:
-
-| Risky statement | Required correction |
+| Risky claim | Correct wording |
 |---|---|
-| “real-time/live traffic” | “deterministic educational traffic simulation” |
-| “real road data” alone | “OSM snapshot topology/tags; derived/synthetic traffic and risk” |
-| “optimal route” | name objective, algorithm, heuristic condition, snapshot/scenario and expansion-budget assumption |
-| “shortest route” | specify shortest distance, minimum hops or minimum weighted cost |
-| “A* is fastest” | report measured run; say expansion/runtime depend on heuristic/input/machine |
-| “IDA* unreachable” | distinguish `limit_reached` from `unreachable` |
-| “second-shortest route” | “best candidate from single-primary-edge exclusion” |
-| “Held–Karp solves TSP” | “exact stop order on the computed directed pairwise matrix, ≤10 stops” |
-| “OSM traffic/risk” | OSM supplies topology/tags only; overlays are project-generated |
-| “hospital is suitable” | POI label only; no capacity/capability validation |
+| “real-time/live traffic” | deterministic educational scenario overlay |
+| “real road data” | OSM snapshot topology/tags; derived/synthetic time/congestion/risk |
+| “optimal route” | optimum theo objective, snapshot, scenario, weights, algorithm condition và expansion budget |
+| “shortest” | nói rõ minimum hops, distance hay weighted cost |
+| “A* is fastest” | chỉ nêu measured result với environment/repetitions |
+| “IDA* unreachable” | phân biệt `limit_reached` và `unreachable` |
+| “second-shortest route” | bounded single-primary-edge-exclusion alternative |
+| “Held–Karp solves delivery globally” | exact trên computed directed pairwise matrix, ≤10 stops |
+| “two-way edge” | hai directed records đã tồn tại; không double-expand |
+| “traversable for shipper/motorbike” | traversable trong model; không xác nhận legal vehicle access |
+| “delivery hospital is a medical destination” | category POI giao/nhận; không đánh giá dịch vụ y tế |
+
+Trước khi nộp, dùng `rg -n -i` để audit toàn repository cho mọi tên thành phố, domain, vehicle và access field legacy; loại `backend/data-tmp`, dependency và build output khỏi phạm vi. Mọi match còn lại phải là migration/history được giải thích rõ hoặc phải sửa.
 
 ## 8. Packaging rehearsal
 
-- [ ] Freeze code and dataset; create release tag/commit.
-- [ ] Rerun all checks and screenshots after freeze.
-- [ ] Export Markdown/Mermaid to PDF and inspect fonts, Vietnamese diacritics, formulas, tables and links.
-- [ ] Remove unresolved `[[...]]` placeholders from final artifacts.
-- [ ] Remove secrets, local virtualenvs, `node_modules`, caches and build junk from submitted archive unless required.
-- [ ] Include installation versions and commands.
-- [ ] Include the data file or an explicit accessible data package/description as required.
-- [ ] Confirm source/video links do not expire and are viewable without edit permission.
-- [ ] Compare final ZIP contents against every filename required by the PDF brief.
+- [ ] Freeze code và canonical dataset.
+- [ ] Rerun importer, tests, benchmarks và screenshots sau freeze.
+- [ ] Kiểm tra Vietnamese font, formulas, tables, diagrams và links trong PDF.
+- [ ] Xóa mọi `[[...]]` placeholder khỏi artifact nộp.
+- [ ] Không đưa `backend/data-tmp`, cache, build output hoặc secret vào ZIP.
+- [ ] Giữ canonical data hoặc data link/description đúng yêu cầu.
+- [ ] Verify source/video link permissions và expiration.
+- [ ] So sánh ZIP cuối với từng filename trong đề chính thức.

@@ -222,6 +222,20 @@ class TrafficStatusResponse(BaseModel):
     reason: str
 
 
+class TrafficOverlayEdgeResponse(BaseModel):
+    edge_id: str
+    multiplier: float
+    effective_speed_kph: float
+    travel_time_s: float | None
+    congestion: str
+    closed: bool
+
+
+class TrafficOverlayResponse(BaseModel):
+    scenario: ScenarioMetadata
+    edges: list[TrafficOverlayEdgeResponse]
+
+
 class DirectedEdgeResponse(BaseModel):
     id: str
     source: str
@@ -231,7 +245,8 @@ class DirectedEdgeResponse(BaseModel):
     road_name: str
     road_class: str
     risk: float
-    emergency_access: bool
+    traversable: bool
+    direction: Literal["one-way", "two-way", "directed"]
     attributes: dict[str, Any] = Field(default_factory=dict)
     geometry: list[list[float]]
     traffic: TrafficStatusResponse
