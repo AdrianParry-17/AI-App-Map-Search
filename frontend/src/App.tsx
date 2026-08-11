@@ -295,12 +295,41 @@ export default function App() {
   const handleObjective = useCallback((next: string) => {
     setObjective(next);
     const presets: Record<string, CostWeights> = {
-      balanced: { distance: 1, time: 1.35, congestion: 2.2, risk: 3.4 },
-      distance: { distance: 5, time: 0.4, congestion: 0.2, risk: 0.2 },
-      time: { distance: 0.4, time: 5, congestion: 2.8, risk: 0.4 },
-      safety: { distance: 0.4, time: 1, congestion: 1.7, risk: 5 },
-      priority_delivery: { distance: 0.7, time: 5, congestion: 3.2, risk: 2.2 },
-    };
+  balanced: {
+    distance: 0.25,
+    time: 0.35,
+    congestion: 0.25,
+    risk: 0.15,
+  },
+
+  distance: {
+    distance: 1.0,
+    time: 0.0,
+    congestion: 0.0,
+    risk: 0.0,
+  },
+
+  time: {
+    distance: 0.10,
+    time: 0.55,
+    congestion: 0.30,
+    risk: 0.05,
+  },
+
+  safety: {
+    distance: 0.15,
+    time: 0.15,
+    congestion: 0.10,
+    risk: 0.60,
+  },
+
+  priority_delivery: {
+    distance: 0.15,
+    time: 0.45,
+    congestion: 0.30,
+    risk: 0.10,
+  },
+};
     if (presets[next]) setWeights(presets[next]);
   }, []);
 
