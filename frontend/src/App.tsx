@@ -354,27 +354,26 @@ export default function App() {
 
   const activeMutation = mode === "compare" ? compareMutation : mode === "multi" ? multiMutation : routeMutation;
   const scenarioName = metadata.scenarios.find((item) => item.id === scenario)?.name || scenario;
+  const nodeNames = useMemo(() => new Map((graph?.nodes || []).map((node) => [node.id, safeNodeName(node.name)] as const)), [graph]);
   const selectedPathNames = useMemo(() => {
     if (!displayResult || !graph) return undefined;
-    const nameById = new Map(graph.nodes.map((node) => [node.id, node.name]));
     if ("order" in displayResult) {
       const ids = [start, ...displayResult.order, ...(returnToStart ? [start] : [])];
-      return ids.map((id) => safeNodeName(nameById.get(id)));
+      return ids.map((id) => nodeNames.get(id) || safeNodeName(id));
     }
-    return displayResult.path.map((id) => safeNodeName(nameById.get(id)));
-  }, [displayResult, graph, start, returnToStart]);
+    return displayResult.path.map((id) => nodeNames.get(id) || safeNodeName(id));
+  }, [displayResult, nodeNames, start, returnToStart]);
   const deliveryLegs = useMemo(() => {
     if (mode !== "multi" || !multiResult || !graph) return [];
-    const nameById = new Map(graph.nodes.map((node) => [node.id, safeNodeName(node.name)]));
     return multiResult.segments.map((segment, index) => ({
       index: index + 1,
-      from: nameById.get(segment.from_id) || "Điểm giao nhận",
-      to: nameById.get(segment.to_id) || "Điểm giao nhận",
+      from: nodeNames.get(segment.from_id) || "Điểm giao nhận",
+      to: nodeNames.get(segment.to_id) || "Điểm giao nhận",
       distanceM: segment.distance_m || 0,
       timeMin: segment.travel_time_min || 0,
       cost: segment.total_cost || 0,
     }));
-  }, [graph, mode, multiResult]);
+  }, [mode, multiResult, nodeNames, graph]);
 
   return (
     <AppShell online={healthQuery.isSuccess} scenarioName={scenarioName}>
@@ -450,6 +449,8 @@ export default function App() {
                 index={traceIndex}
                 playing={playing}
                 speed={playbackSpeed}
+                algorithm={displayResult && "algorithm" in displayResult ? displayResult.algorithm : algorithm}
+                nodeNames={nodeNames}
                 onIndex={setTraceIndex}
                 onPlaying={setPlaying}
                 onSpeed={setPlaybackSpeed}

@@ -1890,11 +1890,15 @@ input[type="range"]::-moz-range-thumb {
 
 .search-edge-active {
   animation: active-edge-pulse 760ms ease-in-out infinite alternate;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   will-change: opacity;
 }
 
 .search-edge-glow {
-  filter: drop-shadow(0 0 10px rgba(14, 143, 181, 0.45));
+  filter: drop-shadow(0 0 12px rgba(14, 143, 181, 0.55));
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .search-node-active {
@@ -1907,8 +1911,16 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .final-route {
-  filter: drop-shadow(0 0 5px rgba(14, 143, 181, 0.55));
+  filter: drop-shadow(0 0 7px rgba(14, 143, 181, 0.7));
+  stroke-linecap: round;
+  stroke-linejoin: round;
   animation: route-reveal 520ms var(--ease-out) both;
+}
+
+.alternative-route {
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.45));
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Playback / trace timeline ------------------------------------------------- */
@@ -2084,6 +2096,96 @@ input[type="range"]::-moz-range-thumb {
   height: 34px;
   padding-left: 9px;
   font-size: 0.6rem;
+}
+
+.trace-table-shell {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  border: 1px solid rgba(15, 41, 67, 0.1);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.08), transparent 40%),
+    rgba(255, 255, 255, 0.82);
+}
+
+.trace-table-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trace-table-header span {
+  color: #0b1727;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.trace-table-header small {
+  color: #6b7c8f;
+  font-size: 0.56rem;
+}
+
+.trace-table-scroll {
+  overflow: auto;
+  max-height: 240px;
+  border: 1px solid rgba(15, 41, 67, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.trace-table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.58rem;
+}
+
+.trace-table th,
+.trace-table td {
+  padding: 8px 9px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(15, 41, 67, 0.08);
+}
+
+.trace-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: #0e7490;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(244, 247, 251, 0.98);
+}
+
+.trace-table tbody tr:nth-child(even) td {
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.trace-table tbody tr[data-active="true"] td {
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.trace-table td {
+  color: #475569;
+  white-space: nowrap;
+}
+
+.trace-table td:first-child {
+  color: #0b1727;
+  font-weight: 800;
+}
+
+.trace-table td:last-child {
+  white-space: normal;
+  min-width: 180px;
 }
 
 /* Route intelligence ------------------------------------------------------- */
