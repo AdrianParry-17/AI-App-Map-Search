@@ -2,10 +2,9 @@
 
 **Coursework:** Lab 1 — Search Strategies  
 **System:** A route-search and multi-location planning laboratory for urban delivery in Ho Chi Minh City  
-**Report status:** Final technical draft  
-**Prepared on:** 11 August 2026
+**Report status:** Final version  
+**Prepared on:** 12 August 2026
 
-> **Submission note.** Replace every value enclosed in angle brackets before submission. Runtime traffic values in this project are educational scenario estimates, not live traffic measurements or navigation advice.
 
 ## a. Group Introduction
 
@@ -13,22 +12,22 @@
 
 | Field | Value |
 |---|---|
-| Group name | `<GROUP_NAME>` |
-| Class / section | `<CLASS_OR_SECTION>` |
-| Project repository | `<REPOSITORY_URL_OR_SUBMISSION_LINK>` |
-| Member 1 | `<STUDENT_ID_1>` — `<FULL_NAME_1>` |
-| Member 2 | `<STUDENT_ID_2>` — `<FULL_NAME_2>` |
-| Member 3 | `<STUDENT_ID_3>` — `<FULL_NAME_3>` |
-| Member 4 | `<STUDENT_ID_4>` — `<FULL_NAME_4>` |
+| Group name | `GROUP 6` |
+| Class / section | `24C03` |
+| Project repository | `https://github.com/AdrianParry-17/AI-App-Map-Search` |
+| Member 1 | `24127345` — `Nguyễn Minh Đức` |
+| Member 2 | `24127346` — `Văn Phú Đức` |
+| Member 3 | `24127385` — `Huỳnh Minh Hùng` |
+| Member 4 | `24127388` — `Hy Huê Hưng` |
 
-The following contribution matrix is a submission-ready template. Percentages should be replaced by the group's agreed figures; the technical scope reflects the implemented system.
+The following contribution matrix reflects the actual work split agreed by the group; every member completed their assigned tasks and contributed equally to the submitted result.
 
 | Member | Primary contribution | Deliverables and verification responsibility | Contribution |
 |---|---|---|---:|
-| `<FULL_NAME_1>` | Project coordination, graph ingestion, backend integration | Canonical OSM snapshot, validation rules, FastAPI endpoints, integration review | `<__%>` |
-| `<FULL_NAME_2>` | Search algorithms and heuristics | Eight pair-search algorithms, heuristic registry, correctness and complexity analysis | `<__%>` |
-| `<FULL_NAME_3>` | Frontend and visualization | React interface, Leaflet map layers, playback controls, comparison and multi-stop views | `<__%>` |
-| `<FULL_NAME_4>` | Experiment design, testing, and documentation | Reproducible benchmarks, scenario analysis, GUI verification, technical report | `<__%>` |
+| `Nguyễn Minh Đức` | UCS and A* algorithms, GUI development, presentation slides | UCS and A* implementations, shared result contract and trace data, frontend views, slides deck | 100% |
+| `Văn Phú Đức` | Cost function, heuristics, DFS, multi-location route optimization, video | Four normalized cost components, heuristic registry with admissibility metadata, DFS implementation, Nearest Neighbor / 2-opt / Held–Karp / Simulated Annealing, demonstration video | 100% |
+| `Huỳnh Minh Hùng` | Dijkstra and IDA* algorithms, technical report | Dijkstra and IDA* implementations, bidirectional variant, correctness and complexity analysis, report writing | 100% |
+| `Hy Huê Hưng` | Graph data, BFS algorithm, GUI development, technical report | Canonical OSM snapshot and validation, BFS implementation with trace data, React/Leaflet interface, report writing | 100% |
 
 ### Completion against the project requirements
 
@@ -42,7 +41,7 @@ The completion assessment below refers to observable features in the submitted i
 | At least two additional algorithms | Dijkstra, Greedy Best-First, Bidirectional Dijkstra, and IDA* are also implemented | Complete |
 | Heuristic explanation | Four selectable heuristics expose admissibility and consistency metadata | Complete |
 | Multi-location optimization | Nearest Neighbor, 2-opt, exact Held–Karp, and seeded Simulated Annealing | Complete |
-| Interactive GUI | Start/goal/stops, objective, algorithm, heuristic, scenario, weights, map, playback, metrics, and explanation | Complete |
+| Interactive GUI | Start/goal/stops, objective, algorithm, heuristic, scenario, weights, map, playback with per-step illustration table, metrics, and explanation | Complete |
 | Algorithm comparison | Common-snapshot comparison view plus reproducible backend experiments | Complete |
 | Documentation and instructions | This report, figures, setup steps, examples, limitations, and references | Complete |
 
@@ -128,7 +127,7 @@ $$
 (w_D,w_T,w_C,w_R)=(0.25,0.50,0.20,0.05).
 $$
 
-The resulting total is a dimensionless ranking score, not a currency or probability. The selected path minimizes $C_q(P)=\sum_{e\in P}C_q(e)$ for algorithms with the corresponding optimality guarantee. A closed arc has infinite cost and is excluded from valid transitions. The GUI supplies balanced, distance, time, safety, and priority-delivery presets and also permits manual weights. This explicit formula prevents the phrase “best route” from being ambiguous: it always means best under the selected scenario and normalized feature weights.
+The resulting total is a dimensionless ranking score, not a currency or probability. The selected path minimizes $C_q(P)=\sum_{e\in P}C_q(e)$ for algorithms with the corresponding optimality guarantee. A closed arc has infinite cost and is excluded from valid transitions. The GUI supplies balanced, distance, time, safety, and priority-delivery presets and also permits manual weights. The presets apply the following normalized weights: balanced $(0.25,0.35,0.25,0.15)$, distance $(1.0,0,0,0)$, time $(0.10,0.55,0.30,0.05)$, safety $(0.15,0.15,0.10,0.60)$, and priority delivery $(0.15,0.45,0.30,0.10)$. A fresh GUI session starts from the backend defaults shown above; re-selecting an objective applies that preset, and manual weight edits switch the objective to custom. This explicit formula prevents the phrase “best route” from being ambiguous: it always means best under the selected scenario and normalized feature weights.
 
 ## d. Dataset
 
@@ -270,11 +269,13 @@ For a pair request, the backend validates endpoints, algorithm, heuristic, scena
 
 ### GUI-to-algorithm interaction
 
-The GUI loads graph topology once, then fetches a much smaller traffic overlay when the scenario changes. A pair search is enabled only after valid endpoints are available. During playback, the map distinguishes expanded nodes, frontier nodes, the currently expanded node, and the reconstructed final path. Back, step, play/pause, final-step, speed, and range controls share one trace index; moving that index updates both the map and status text. The final route stays visually separate from the exploration tree, which prevents a moving point from being mistaken for the complete search process.
+The GUI loads graph topology once, then fetches a much smaller traffic overlay when the scenario changes. A pair search is enabled only after valid endpoints are available. During playback, the map distinguishes expanded nodes, frontier nodes, the currently expanded node, and the reconstructed final path. Road, exploration, and route strokes use rounded, bolder caps so the layers stay legible over the basemap while animating. Back, step, play/pause, final-step, speed, and range controls share one trace index; moving that index updates both the map and status text. The final route stays visually separate from the exploration tree, which prevents a moving point from being mistaken for the complete search process.
+
+The playback bar also renders a per-step illustration table whose columns follow the selected algorithm. Every row lists the step number, the node currently being expanded, and the frontier queue; UCS, Dijkstra, and Bidirectional Dijkstra add the accumulated cost $g(n)$, Greedy Best-First adds the estimate $h(n)$, and A* and IDA* show $g(n)$, $h(n)$, and $f(n)$ together. The active row highlights in sync with the trace index, so the table doubles as a readable animation of frontier and score evolution.
 
 ![Search trace in progress](assets/02-search-process.png)
 
-*Figure 5. Paused A* trace. The map legend identifies the exploration tree, frontier, and current node; the playback bar reports trace progress and cumulative counts.*
+*Figure 5. Paused A* trace. The map legend identifies the exploration tree, frontier, and current node; the playback bar reports trace progress, cumulative counts, and a per-step illustration table with algorithm-specific columns.*
 
 ![Final pair-route result](assets/03-route-result.png)
 
@@ -393,7 +394,7 @@ npm run dev -- --host 127.0.0.1
 
 ### GUI usage
 
-For a pair route, open **Tìm tuyến**, select or click a pickup and destination, choose an algorithm, objective, heuristic, and traffic scenario, adjust weights if required, and run the search. Use the playback bar to return to the beginning, move one expansion backward or forward, play/pause, jump to the final path, change speed, or drag the trace slider. Read the right panel for route metrics, expanded nodes, frontier peak, step list, explanation, component costs, and alternative route.
+For a pair route, open **Tìm tuyến**, select or click a pickup and destination, choose an algorithm, objective, heuristic, and traffic scenario, adjust weights if required, and run the search. Use the playback bar to return to the beginning, move one expansion backward or forward, play/pause, jump to the final path, change speed, or drag the trace slider; its illustration table shows every recorded step with the frontier queue and, when relevant, the $g(n)$, $h(n)$, and $f(n)$ scores of the algorithm in use. Read the right panel for route metrics, expanded nodes, frontier peak, step list, explanation, component costs, and alternative route.
 
 For a controlled comparison, open **So sánh**, select at least two algorithms, retain identical endpoints/scenario/weights, and run the benchmark. For a delivery tour, open **Nhiều điểm**, add stops from the list or map, select an optimizer and optional return-to-start, and run. Held–Karp should be used when an exact answer is required and there are at most 10 stops; approximate methods support up to 12. Open **Thuật toán** to review guarantees before interpreting results.
 
@@ -409,7 +410,7 @@ For a controlled comparison, open **So sánh**, select at least two algorithms, 
 | Scenario | Normal traffic |
 | Backend weights | distance 0.25, time 0.50, congestion 0.20, risk 0.05 |
 
-The controlled backend output is a 24-arc route with generalized cost 3.4869, distance 2.588 km, ETA 5.308 minutes, 428 expanded nodes, and frontier peak 73. Small runtime differences between the table, API, and screenshot are expected because they were captured in separate processes and the interactive request includes trace/result preparation. Route cost and geometry remain deterministic for an identical dataset, scenario, request, and implementation.
+The controlled backend output is a 24-arc route with generalized cost 3.4869, distance 2.588 km, ETA 5.308 minutes, 428 expanded nodes, and frontier peak 73. Small runtime differences between the table, API, and screenshot are expected because they were captured in separate processes and the interactive request includes trace/result preparation. Route cost and geometry remain deterministic for an identical dataset, scenario, request, and implementation. To reproduce these figures, either call the API without weights (backend defaults) or set the manual weights above; selecting the GUI "Balanced cost" preset applies 0.25 / 0.35 / 0.25 / 0.15 instead (Section c), which changes the scores and route.
 
 ## j. Limitations and Future Work
 
