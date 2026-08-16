@@ -3,7 +3,8 @@
 **Coursework:** Lab 1 — Search Strategies  
 **System:** A route-search and multi-location planning laboratory for urban delivery in Ho Chi Minh City  
 **Report status:** Final version  
-**Prepared on:** 12 August 2026
+**Prepared on:** 12 August 2026  
+**Instructor / Supervisor:** Bùi Tiến Lên, Võ Nhật Tân, Bùi Duy Đăng
 
 ## 1. Introduction
 
