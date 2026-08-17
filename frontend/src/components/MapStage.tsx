@@ -191,14 +191,14 @@ const SearchTreeLayer = memo(function SearchTreeLayer({
       exploredRef.current,
       exploredGroupRef.current,
       tracePaths(traceStep?.explored_edge_ids, traceStep?.explored_links, coordinatesByEdgeId, nodeById),
-      { color: "#20bde7", weight: 3.4, opacity: 0.62 },
+      { color: "#149dc7", weight: 4.8, opacity: 0.82, lineCap: "round", lineJoin: "round" },
       true,
     );
     syncPaths(
       frontierRef.current,
       frontierGroupRef.current,
       tracePaths(traceStep?.frontier_edge_ids, traceStep?.frontier_links, coordinatesByEdgeId, nodeById),
-      { color: "#fbbf24", weight: 2.7, opacity: 0.72, dashArray: "3 8" },
+      { color: "#ffd166", weight: 4, opacity: 0.92, dashArray: "4 7", lineCap: "round", lineJoin: "round" },
       false,
     );
   }, [coordinatesByEdgeId, nodeById, renderer, traceStep]);
@@ -272,9 +272,11 @@ const BaseRoadNetwork = memo(function BaseRoadNetwork({
       pane: "roads",
       renderer,
       color: congestionColor(state.level, state.closed),
-      weight: state.closed ? 4 : 2.4,
-      opacity: state.closed ? 0.8 : 0.46,
+      weight: state.closed ? 5.1 : 3.2,
+      opacity: state.closed ? 0.92 : 0.62,
       dashArray: state.closed ? "7 6" : undefined,
+      lineCap: "round",
+      lineJoin: "round",
     };
   }, [renderer, roadState]);
 
@@ -296,7 +298,7 @@ const BaseRoadNetwork = memo(function BaseRoadNetwork({
     pathsRef.current.set(visualId, path);
     path.on("mouseover", () => {
       const closed = roadState(visualId).closed;
-      path.setStyle({ weight: closed ? 5 : 3.5, opacity: 0.86 });
+      path.setStyle({ weight: closed ? 6 : 4.2, opacity: 0.98 });
     });
     path.on("mouseout", () => {
       path.setStyle(roadStyle(visualId));
@@ -688,12 +690,12 @@ export function MapStage({
 
           <Pane name="route-result" style={{ zIndex: 440 }}>
             {alternative.length > 1 && (
-              <Polyline positions={alternative} className="alternative-route" interactive={false} pathOptions={{ color: "#fbbf24", weight: 5, opacity: 0.7, dashArray: "7 9" }} />
+              <Polyline positions={alternative} className="alternative-route" interactive={false} pathOptions={{ color: "#ffc83d", weight: 6, opacity: 0.86, dashArray: "7 9", lineCap: "round", lineJoin: "round" }} />
             )}
             {route.length > 1 && (
               <>
-                <Polyline positions={route} interactive={false} pathOptions={{ color: "#001726", weight: 12, opacity: 0.64 }} />
-                <Polyline positions={route} className="final-route" interactive={false} pathOptions={{ color: "#38d9ff", weight: 6, opacity: 0.98 }} />
+                <Polyline positions={route} interactive={false} pathOptions={{ color: "#00111a", weight: 14, opacity: 0.76, lineCap: "round", lineJoin: "round" }} />
+                <Polyline positions={route} className="final-route" interactive={false} pathOptions={{ color: "#5ae8ff", weight: 7, opacity: 1, lineCap: "round", lineJoin: "round" }} />
               </>
             )}
           </Pane>

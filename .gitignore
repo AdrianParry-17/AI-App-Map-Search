@@ -38,6 +38,9 @@ backend/data/cache/*
 # Teammate/raw import workspace (canonical snapshots live in backend/data)
 backend/data-tmp/
 
+# Report build scaffolding (generated; only deliverables are committed)
+report/build/
+
 # OS
 .DS_Store
 Thumbs.db
